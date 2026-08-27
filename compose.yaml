@@ -1,6 +1,7 @@
 services:
   pantau:
     build: ./app
+    image: pantau:latest
     container_name: pantau
     restart: unless-stopped
     # Reads keys from .env (copy .env.example -> .env). Never commit .env.
@@ -22,6 +23,22 @@ services:
     #   - "traefik.http.routers.pantau.entrypoints=websecure"
     #   - "traefik.http.routers.pantau.tls.certresolver=letsencrypt"
     #   - "traefik.http.services.pantau.loadbalancer.server.port=8000"
+
+  # MCP server for AI agents — same image, different command. Exposes the monitor's
+  # data (situation brief, live streams, timeline, reachability, markets, cities) over
+  # the Model Context Protocol (streamable HTTP) at /mcp.
+  pantau-mcp:
+    image: pantau:latest
+    container_name: pantau-mcp
+    restart: unless-stopped
+    depends_on:
+      - pantau
+    command: ["python", "mcp_server.py"]
+    environment:
+      - PANTAU_API=http://pantau:8000
+    ports:
+      - "8001:8000"           # MCP endpoint at http://localhost:8001/mcp
+    # Behind a proxy, route /mcp to this service (see README) rather than publishing a port.
 
 # networks:
 #   traefik-public:

@@ -67,6 +67,24 @@ Everything region-specific lives at the top of `app/main.py` — edit and rebuil
 - `MARKET_SYMBOLS` — Yahoo Finance tickers
 - `SEV_HIGH` / `SEV_MED` — the words that mark an item critical
 
+## MCP server (for AI agents)
+
+Pantau ships a **Model Context Protocol** server so agents can query the live monitor
+directly. `docker compose up` starts it alongside the site; it serves streamable HTTP at
+`/mcp` (locally, `http://localhost:8001/mcp`). Behind a proxy, route `/mcp` to the
+`pantau-mcp` service — e.g. Caddy:
+
+```caddy
+your.domain {
+    handle /mcp* { reverse_proxy pantau-mcp:8000 }
+    handle      { reverse_proxy pantau:8000 }
+}
+```
+
+Tools: `situation_brief`, `live_streams`, `news_timeline` (filter by city or critical-only),
+`reachability`, `markets`, `city_activity`. It's a thin, 15-second-cached wrapper over
+`/api/summary`, so it exposes only what the public site already does.
+
 ## Architecture
 
 A single FastAPI service. Async collectors poll each source on their own cadence and
