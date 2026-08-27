@@ -14,10 +14,11 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="PANTAU · Indonesia Situational Monitor">
 <meta name="twitter:description" content="A wall of live streams, an AI situation brief, a fused news timeline, markets, and a reachability watch.">
-<!-- For agentic / AI users: a Model Context Protocol (MCP) server exposing this
-     monitor's feed is in progress. Track or contribute at
-     https://github.com/mathdroid/karnak -->
-<meta name="ai-agents" content="MCP server in progress: https://github.com/mathdroid/karnak">
+<!-- For agentic / AI users: this monitor exposes a Model Context Protocol (MCP)
+     server over streamable HTTP. Connect at https://pantau.mathdro.id/mcp
+     Tools: situation_brief, live_streams, news_timeline, reachability, markets,
+     city_activity. Source: https://github.com/mathdroid/karnak -->
+<meta name="ai-agents" content="MCP (streamable HTTP): https://pantau.mathdro.id/mcp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
@@ -396,9 +397,8 @@
       <input id="reachHost" placeholder="host, e.g. example.com" autocomplete="off" spellcheck="false">
       <button type="submit">Add</button>
     </form>
-    <p class="reachnote">Indonesia is checked from the server's residential exit. Your device
-      is checked from this browser only — nothing you add is opened or logged by us. Add any
-      site you want to watch (social platforms included) and it's tested from your connection.</p>
+    <p class="reachnote">Two vantages: an Indonesian residential line (server) and your own
+      browser. Add any host and it's checked from your connection; your list stays in this browser.</p>
   </section>
   </div>
 </main>
@@ -415,8 +415,8 @@
   <div class="fbar" id="health"></div>
   <div class="fmeta">
     <a href="https://github.com/mathdroid/karnak" target="_blank" rel="noopener">GitHub ↗</a>
-    <span class="agent">Agents: a Model Context Protocol (MCP) server for this feed is in progress
-      → <a href="https://github.com/mathdroid/karnak" target="_blank" rel="noopener">github.com/mathdroid/karnak</a></span>
+    <span class="agent">Agents: connect the MCP server (streamable HTTP) at
+      <a href="https://pantau.mathdro.id/mcp" target="_blank" rel="noopener">pantau.mathdro.id/mcp</a></span>
   </div>
 </footer>
 
@@ -553,7 +553,7 @@ function renderPills(verdicts) {
   const blocked = Object.entries(verdicts).filter(([, v]) => v === "blocked").map(([t]) => PLATFORM[t]||t);
   $("alertbar").classList.toggle("on", blocked.length > 0);
   if (blocked.length) $("alertbar").innerHTML =
-    `<b>Access restricted</b> from Indonesian residential network: ${blocked.join(", ")} · prepare VPN. Control path remains nominal.`;
+    `<b>Access restricted</b> in Indonesia: ${blocked.join(", ")}. Still reachable from the direct path, so likely a local block. Prepare a VPN.`;
 }
 function renderBrief(brief, now) {
   const el = $("brief");
@@ -587,7 +587,7 @@ function renderHealth(sources, now) {
   const byName = Object.fromEntries(sources.map(s => [s.source, s]));
   $("health").innerHTML = order.filter(n => byName[n]).map(n => {
     const s = byName[n]; const ok = s.lastOk && (now - s.lastOk) < 900 && !s.lastErr;
-    return `<span class="s" title="${esc(s.lastErr||"nominal")}"><span class="led ${ok?"ok":"err"}"></span>${n}${s.items?` <span class="n">${s.items}</span>`:""}</span>`;
+    return `<span class="s" title="${esc(s.lastErr||"ok")}"><span class="led ${ok?"ok":"err"}"></span>${n}${s.items?` <span class="n">${s.items}</span>`:""}</span>`;
   }).join("");
 }
 
