@@ -3,8 +3,8 @@
 Collectors poll public sources server-side, normalize into SQLite, and the
 frontend polls /api/summary. Blocked-from-datacenter sources (Waze API,
 Reddit) are excluded; Bluesky is fetched client-side (open CORS, clean IP).
-Censorship probes run through the NAS residential exit (Indonesian ISP)
-against a direct SG control path.
+Censorship probes run through a residential exit (Indonesian ISP) against the
+server's own datacenter path as the control.
 """
 import asyncio
 import calendar
@@ -443,12 +443,12 @@ def compute_verdicts(probe_map):
         if target == "control":
             continue
         id_ok = v.get("id-residential", {}).get("ok")
-        sg_ok = v.get("sg-direct", {}).get("ok")
+        direct_ok = v.get("direct", {}).get("ok")
         if id_ok is None:
             verdicts[target] = "unknown"
         elif id_ok:
             verdicts[target] = "ok"
-        elif sg_ok and ctrl_id_ok:
+        elif direct_ok and ctrl_id_ok:
             verdicts[target] = "blocked"       # fails only from the ID vantage
         elif not ctrl_id_ok:
             verdicts[target] = "vantage-down"  # our probe path itself is broken
@@ -518,7 +518,7 @@ async def probe_once(session, name, url, vantage):
 async def collect_probes(direct, viaproxy):
     for name, url in PROBE_TARGETS:
         await probe_once(viaproxy, name, url, "id-residential")
-        await probe_once(direct, name, url, "sg-direct")
+        await probe_once(direct, name, url, "direct")
     await emit_connectivity_events(compute_verdicts(await latest_probe_map()))
     await record_status("probes", True, "", len(PROBE_TARGETS))
 
