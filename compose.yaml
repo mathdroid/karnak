@@ -4,18 +4,18 @@ services:
     image: pantau:latest
     container_name: pantau
     restart: unless-stopped
-    # Reads keys from .env (copy .env.example -> .env). Never commit .env.
+    # The service reads keys from .env. Copy .env.example to .env. Do not commit .env.
     env_file: .env
     volumes:
-      - ./data:/data          # SQLite lives here; safe to delete to reset
+      - ./data:/data          # The SQLite database is stored here. Delete the directory to reset.
     ports:
-      - "8000:8000"           # open http://localhost:8000 — remove if you front it with a proxy
-    # If you run a residential SOCKS proxy on the host for TikTok/markets (see README),
+      - "8000:8000"           # The site is at http://localhost:8000. Remove this port if a reverse proxy fronts the service.
+    # If a residential SOCKS proxy runs on the host for TikTok and markets (see README),
     # expose it to the container as `hostrelay`:
     # extra_hosts:
     #   - "hostrelay:host-gateway"
 
-    # --- Optional: Traefik reverse proxy (uncomment + set DOMAIN in .env) ---
+    # Optional Traefik reverse proxy. Uncomment these lines and set DOMAIN in .env
     # networks: [traefik-public]
     # labels:
     #   - "traefik.enable=true"
@@ -24,9 +24,9 @@ services:
     #   - "traefik.http.routers.pantau.tls.certresolver=letsencrypt"
     #   - "traefik.http.services.pantau.loadbalancer.server.port=8000"
 
-  # MCP server for AI agents — same image, different command. Exposes the monitor's
-  # data (situation brief, live streams, timeline, reachability, markets, cities) over
-  # the Model Context Protocol (streamable HTTP) at /mcp.
+  # MCP server for AI agents. It runs from the same image with a different command.
+  # It serves the monitor's data (situation brief, live streams, timeline, reachability,
+  # markets, cities) over the Model Context Protocol (streamable HTTP) at /mcp.
   pantau-mcp:
     image: pantau:latest
     container_name: pantau-mcp
@@ -37,8 +37,8 @@ services:
     environment:
       - PANTAU_API=http://pantau:8000
     ports:
-      - "8001:8000"           # MCP endpoint at http://localhost:8001/mcp
-    # Behind a proxy, route /mcp to this service (see README) rather than publishing a port.
+      - "8001:8000"           # The MCP endpoint is http://localhost:8001/mcp
+    # Behind a reverse proxy, route /mcp to this service (see README) instead of publishing a port.
 
 # networks:
 #   traefik-public:

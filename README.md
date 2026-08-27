@@ -1,34 +1,38 @@
 # Pantau
 
-> Repo codename **Karnak** — after Ozymandias's fortress and its
-> [wall of monitors](https://tvobsessive.com/wp-content/uploads/2019/09/ozymandias-veidt-cat-screens-featured-e1569021951280-758x412.jpg)
-> in *Watchmen* (© DC Comics / HBO). The running product is **Pantau**
-> (Indonesian: *to watch / monitor*).
+Pantau is a single-screen web dashboard that monitors a fast-moving civic event through
+public sources. It combines six views on one page: a grid of live news video streams, an
+AI-generated situation brief, a merged news timeline, an activity map, market indicators,
+and a platform reachability panel.
 
-A single-screen OSINT situational monitor. It fuses public, real-time sources for a
-fast-moving civic event into one operations view: a wall of live news streams playing
-at once, a synthesized situation brief, a fused news timeline, an activity map, market
-indicators, and a platform-reachability (censorship) watch.
+"Pantau" is Indonesian for "to watch". The repository codename is "Karnak", after the
+fortress of Ozymandias and its
+[wall of monitors](https://tvobsessive.com/wp-content/uploads/2019/09/ozymandias-veidt-cat-screens-featured-e1569021951280-758x412.jpg)
+in *Watchmen* (© DC Comics / HBO).
 
-Built originally to follow protests in Indonesia, but the sources and keywords are just
-configuration — point it at any country or event.
+The default configuration follows protests in Indonesia. The sources and keywords are
+configuration values, so you can point the monitor at any country or event.
 
-> Everything it shows comes from public sources. No login, no tracking, no accounts.
+All displayed data comes from public sources. The site requires no login and no account.
+The site does not track visitors.
 
-## What it does
+## Features
 
-- **Live video wall** — finds every relevant YouTube livestream (search + a channel
-  watchlist), verifies each is *actually live*, and plays them simultaneously with
-  one-click audio focus.
-- **Situation brief** — reads the whole noisy headline flood and an LLM distills the few
-  genuinely significant, deduplicated, time-stamped developments, each with a location
-  and links back to the sources it used.
-- **Fused timeline** — Google News + publisher RSS, deduplicated, tagged by city and
-  severity.
-- **Activity map** — reports per city over the last hour.
-- **Markets** — USD/local-currency, the local index, and macro indicators.
-- **Reachability watch** — probes major platforms from a residential vantage vs. a
-  direct one to flag throttling/blocking, and logs the transitions.
+- **Live video wall.** The collector finds relevant YouTube livestreams through search
+  and a channel watchlist. It verifies that each stream is live at that moment. The page
+  plays all streams at the same time, and one click moves the audio focus to one stream.
+- **Situation brief.** An LLM reads the collected headlines and returns the most
+  significant developments. The LLM deduplicates the developments and stamps each one
+  with a time, a location, and links to its sources.
+- **Timeline.** The timeline merges Google News and publisher RSS feeds. The collector
+  deduplicates the items and tags each item with a city and a severity.
+- **Activity map.** The map shows the number of reports per city over the last hour.
+- **Markets.** The panel shows the US dollar to local currency rate, the local stock
+  index, and macro indicators.
+- **Reachability panel.** The server probes major platforms from a residential
+  connection and from a direct datacenter connection. A platform that fails only from
+  the residential connection is marked as blocked. The monitor logs each status
+  transition.
 
 ## Quick start
 
@@ -39,40 +43,50 @@ docker compose up -d --build
 open http://localhost:8000
 ```
 
-That's it. **With no keys at all** you still get the YouTube live wall and the Google
-News timeline. Each key you add lights up one more collector.
+The monitor runs without any API keys. In that mode it serves the YouTube live wall and
+the Google News timeline. Each additional key enables one more collector.
 
-## Keys (all optional)
+## API keys
 
-| Feature | Env var | Where to get it |
+Every key is optional.
+
+| Feature | Env var | Source |
 |---|---|---|
-| Situation brief | `OPENROUTER_API_KEY` | <https://openrouter.ai> — any chat model via `SUMMARY_MODEL` |
-| TikTok LIVE detection | `SIGN_API_KEY` | <https://www.eulerstream.com> (TikTokLive signing) |
-| TikTok + markets egress | `PROXY` | any residential SOCKS5 proxy you control |
+| Situation brief | `OPENROUTER_API_KEY` | <https://openrouter.ai>. Select any chat model with `SUMMARY_MODEL`. |
+| TikTok LIVE detection | `SIGN_API_KEY` | <https://www.eulerstream.com> (TikTokLive signing). |
+| TikTok and markets egress | `PROXY` | Any residential SOCKS5 proxy that you control. |
 
-**Why a proxy?** TikTok and Yahoo Finance block datacenter/cloud IPs. Those two
-collectors route through `PROXY` (a `socks5://host:port` on a residential line). Leave it
-blank and they're simply skipped — nothing else is affected. A Tailscale exit node on a
-home connection, or any commercial residential proxy, works.
+## Proxy requirement
 
-## Configure it for your event
+TikTok and Yahoo Finance block requests from datacenter IP addresses. The TikTok
+collector and the markets collector therefore send their requests through `PROXY`.
+`PROXY` is a `socks5://host:port` address on a residential connection. If you leave
+`PROXY` blank, the app skips these two collectors, and the other collectors are not
+affected. A Tailscale exit node on a home connection works. A commercial residential
+proxy also works.
 
-Everything region-specific lives at the top of `app/main.py` — edit and rebuild:
+## Configuration
 
-- `YT_SEARCH_QUERIES`, `GNEWS_QUERIES` — the keywords to track
-- `YT_CHANNELS` — news channels to check for a live stream (name, channel id, handle)
-- `TIKTOK_WATCH` — TikTok handles to watch for going live
-- `MEDIA_FEEDS` — publisher RSS feeds
-- `CITIES` — place names → map coordinates (in `app/static/index.html`)
-- `MARKET_SYMBOLS` — Yahoo Finance tickers
-- `SEV_HIGH` / `SEV_MED` — the words that mark an item critical
+All region-specific values are defined at the top of `app/main.py`. Edit the values and
+rebuild the image.
 
-## MCP server (for AI agents)
+| Value | Contents |
+|---|---|
+| `YT_SEARCH_QUERIES`, `GNEWS_QUERIES` | The keywords to track. |
+| `YT_CHANNELS` | News channels to check for a live stream. Each entry has a name, a channel id, and a handle. |
+| `TIKTOK_WATCH` | TikTok handles to check for live status. |
+| `MEDIA_FEEDS` | Publisher RSS feeds. |
+| `CITIES` | Place names and their map coordinates. This value is in `app/static/index.html`. |
+| `MARKET_SYMBOLS` | Yahoo Finance tickers. |
+| `SEV_HIGH`, `SEV_MED` | The words that mark an item as critical or medium severity. |
 
-Pantau ships a **Model Context Protocol** server so agents can query the live monitor
-directly. `docker compose up` starts it alongside the site; it serves streamable HTTP at
-`/mcp` (locally, `http://localhost:8001/mcp`). Behind a proxy, route `/mcp` to the
-`pantau-mcp` service — e.g. Caddy:
+## MCP server
+
+Pantau includes a Model Context Protocol (MCP) server, so AI agents can query the live
+monitor. `docker compose up` starts the MCP server next to the site. The server serves
+MCP over streamable HTTP at `/mcp`. In the local compose setup the endpoint is
+`http://localhost:8001/mcp`. Behind a reverse proxy, route `/mcp` to the `pantau-mcp`
+service. Example Caddy configuration:
 
 ```caddy
 your.domain {
@@ -81,27 +95,29 @@ your.domain {
 }
 ```
 
-Tools: `situation_brief`, `live_streams`, `news_timeline` (filter by city or critical-only),
-`reachability`, `markets`, `city_activity`. It's a thin, 15-second-cached wrapper over
-`/api/summary`, so it exposes only what the public site already does.
+The server provides six tools: `situation_brief`, `live_streams`, `news_timeline`,
+`reachability`, `markets`, and `city_activity`. The `news_timeline` tool can filter by
+city or by critical severity. The server is a wrapper over `/api/summary` with a
+15-second cache, so it exposes only the data that the public site already exposes.
 
 ## Architecture
 
-A single FastAPI service. Async collectors poll each source on their own cadence and
-write normalized rows to SQLite (`data/pantau.db`); the frontend is one static page that
-polls `/api/summary` every 30s. No build step, no framework — just `main.py` and one
+One FastAPI service runs all collectors. Each collector is an async task that polls its
+source on its own timer and writes normalized rows to SQLite at `data/pantau.db`. The
+frontend is one static page that polls `/api/summary` every 30 seconds. The project has
+no build step and no frontend framework. The application consists of `main.py` and one
 `index.html`.
 
 ```
 collectors ──> SQLite ──> /api/summary ──> index.html
 ```
 
-## Deploying behind a domain
+## Deployment behind a domain
 
-The container serves plain HTTP on `:8000` — front it with whatever you already run.
-`compose.yaml` includes commented Traefik labels; set `DOMAIN` in `.env` and uncomment
-them, or put it behind nginx/Caddy/Cloudflare Tunnel yourself.
+The container serves plain HTTP on `:8000`. Put your own reverse proxy in front of it.
+`compose.yaml` contains commented Traefik labels. To use them, set `DOMAIN` in `.env`
+and uncomment the labels. Nginx, Caddy, and Cloudflare Tunnel also work.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Pantau is licensed under the MIT license. See [LICENSE](LICENSE).

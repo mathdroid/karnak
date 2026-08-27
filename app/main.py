@@ -78,7 +78,8 @@ BRIEF_PROMPT = (
     "'time' = when the EVENT itself happened in WIB 'HH:MM' (infer from the wording; only if "
     "there is no cue use the publication time), 'place' = the specific location as 'venue, city' "
     "(e.g. 'DPR, Jakarta' or 'Tugu Muda, Semarang'), 'text' = one concrete factual English line "
-    "(<=22 words, keep numbers), 'sources' = array of the [index] numbers you drew from. "
+    "(<=22 words, keep numbers, active voice, plain literal wording, no metaphors, no em dashes), "
+    "'sources' = array of the [index] numbers you drew from. "
     "ORDER NEWEST FIRST by time. Return ONLY a JSON array of "
     '{"time","place","text","sources"}.'
 )
@@ -438,7 +439,7 @@ async def collect_tiktok():
             client = TikTokLiveClient(unique_id=handle, web_proxy=PROXY)
             if await client.is_live():
                 name = handle.lstrip("@")
-                found[handle] = (f"{name} — live on TikTok", "TikTok", 0)
+                found[handle] = (f"{name} is live on TikTok", "TikTok", 0)
         except Exception:
             pass  # UserNotFound / transient proxy error — skip this handle this cycle
         await asyncio.sleep(2)

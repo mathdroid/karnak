@@ -1,8 +1,8 @@
-"""Pantau MCP server — exposes the live monitor's data as tools for AI agents.
+"""Pantau MCP server. It exposes the live monitor's data as tools for AI agents.
 
-A thin, cached wrapper over the pantau HTTP API (`/api/summary`). Serves the
-Model Context Protocol over streamable HTTP at `/mcp`. Runs as its own process
-from the same image; set PANTAU_API to the pantau service URL.
+The server is a cached wrapper over the pantau HTTP API (`/api/summary`). It serves
+the Model Context Protocol over streamable HTTP at `/mcp`. It runs as its own process
+from the same image. Set PANTAU_API to the pantau service URL.
 """
 import os
 import time
@@ -17,10 +17,11 @@ mcp = FastMCP(
     host="0.0.0.0",
     port=int(os.getenv("MCP_PORT", "8000")),
     instructions=(
-        "Live OSINT situational monitor for Indonesia. These tools expose, from public "
-        "sources: the current AI situation brief, the live video streams covering events, "
-        "the fused news timeline, which platforms are reachable from an Indonesian "
-        "connection, market indicators, and per-city activity. Times are WIB (UTC+7)."
+        "Pantau is a live OSINT monitor for Indonesia. All data comes from public "
+        "sources. The tools return the current AI situation brief, the live video "
+        "streams that cover the events, the merged news timeline, the reachability "
+        "of major platforms from an Indonesian connection, market indicators, and "
+        "per-city report counts. All times are WIB (UTC+7)."
     ),
 )
 
@@ -45,18 +46,20 @@ def _wib(ts):
 
 @mcp.tool()
 async def situation_brief() -> dict:
-    """The current AI-synthesized situation brief: the few most significant, deduplicated,
-    time-stamped developments distilled from the live Indonesian news flood — each with a
-    place and links to the cited sources. Start here for 'what is happening right now'."""
+    """Return the current AI-generated situation brief. The brief lists the most
+    significant developments from the live Indonesian news feed. Each development is
+    deduplicated and has a time, a place, and links to the cited sources. Call this
+    tool first for an overview of the current situation."""
     b = (await _summary()).get("brief") or {}
     return {"updated_wib": _wib(b.get("ts")), "developments": b.get("items", [])}
 
 
 @mcp.tool()
 async def live_streams() -> list:
-    """Video streams live right now covering events on the ground (YouTube news channels and
-    citizen streams, plus TikTok live news accounts). Each is verified currently live.
-    Returns title, channel, concurrent viewers, platform, and a watch URL."""
+    """Return the video streams that are live now and cover the events. The sources are
+    YouTube news channels, citizen streams, and TikTok live news accounts. Each stream
+    is verified as currently live. Each entry has a title, a channel, a concurrent
+    viewer count, a platform, and a watch URL."""
     out = []
     for s in (await _summary()).get("streams", []):
         tiktok = s.get("src") == "tiktok"
@@ -73,9 +76,11 @@ async def live_streams() -> list:
 
 @mcp.tool()
 async def news_timeline(limit: int = 30, critical_only: bool = False, city: str = "") -> list:
-    """Recent fused news items (Google News + publisher RSS), newest first. Set critical_only
-    to see only high-severity items (force, arrests, casualties); set city (e.g. 'jakarta',
-    'makassar') to filter by location. Returns time (WIB), title, source, city, severity, url."""
+    """Return recent merged news items (Google News and publisher RSS), newest first.
+    Set critical_only to true to return only high-severity items. High severity covers
+    force, arrests, and casualties. Set city, for example 'jakarta' or 'makassar', to
+    filter by location. Each entry has a time (WIB), a title, a source, a city, a
+    severity, and a url."""
     evs = (await _summary()).get("events", [])
     if critical_only:
         evs = [e for e in evs if e.get("sev") == "high"]
@@ -93,9 +98,11 @@ async def news_timeline(limit: int = 30, critical_only: bool = False, city: str 
 
 @mcp.tool()
 async def reachability() -> list:
-    """Which major platforms are reachable vs blocked from an Indonesian residential
-    connection, from continuous probing. status is 'ok' (reachable), 'blocked' (fails only
-    from the Indonesian vantage), or 'down'. Use to detect censorship/throttling."""
+    """Return the reachability of major platforms from an Indonesian residential
+    connection, measured by continuous probes. The status is 'ok' when the platform is
+    reachable. The status is 'blocked' when the platform fails only from the Indonesian
+    connection. The status is 'down' when the platform fails from both connections.
+    Use this tool to detect censorship or throttling."""
     names = {"x.com": "X", "tiktok": "TikTok", "youtube": "YouTube",
              "bluesky": "Bluesky", "telegram": "Telegram"}
     verdicts = (await _summary()).get("verdicts") or {}
@@ -104,16 +111,17 @@ async def reachability() -> list:
 
 @mcp.tool()
 async def markets() -> list:
-    """Live market indicators relevant to the situation: USD/IDR, the Jakarta Composite
-    (IHSG), gold, Brent crude, and Bitcoin, each with intraday percentage change."""
+    """Return live market indicators: USD/IDR, the Jakarta Composite index (IHSG),
+    gold, Brent crude, and Bitcoin. Each entry includes the intraday percentage
+    change."""
     m = (await _summary()).get("markets") or {}
     return m.get("items", [])
 
 
 @mcp.tool()
 async def city_activity() -> list:
-    """Report volume per city over the last hour, with how many were critical — a quick read
-    on where activity is concentrating."""
+    """Return the report count per city over the last hour, and the number of those
+    reports that are critical."""
     return (await _summary()).get("cityCounts", [])
 
 

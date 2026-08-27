@@ -5,20 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>PANTAU · Indonesia Situational Monitor</title>
-<meta name="description" content="Live OSINT monitor for Indonesia: a wall of live streams, an AI situation brief, a fused news timeline, market indicators, and a network reachability watch.">
+<meta name="description" content="Pantau is a live OSINT monitor for Indonesia. It shows live video streams, an AI situation brief, a merged news timeline, market indicators, and a reachability panel.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PANTAU">
 <meta property="og:title" content="PANTAU · Indonesia Situational Monitor">
-<meta property="og:description" content="A wall of live streams, an AI situation brief, a fused news timeline, markets, and a reachability watch. All public sources.">
+<meta property="og:description" content="Pantau shows live video streams, an AI situation brief, a merged news timeline, market indicators, and a reachability panel. All data comes from public sources.">
 <meta property="og:url" content="https://pantau.mathdro.id">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="PANTAU · Indonesia Situational Monitor">
-<meta name="twitter:description" content="A wall of live streams, an AI situation brief, a fused news timeline, markets, and a reachability watch.">
-<!-- For agentic / AI users: this monitor exposes a Model Context Protocol (MCP)
+<meta name="twitter:description" content="Pantau shows live video streams, an AI situation brief, a merged news timeline, market indicators, and a reachability panel.">
+<!-- Note for AI agents: this monitor provides a Model Context Protocol (MCP)
      server over streamable HTTP. Connect at https://pantau.mathdro.id/mcp
-     Tools: situation_brief, live_streams, news_timeline, reachability, markets,
-     city_activity. Source: https://github.com/mathdroid/karnak -->
-<meta name="ai-agents" content="MCP (streamable HTTP): https://pantau.mathdro.id/mcp">
+     The server provides six tools: situation_brief, live_streams, news_timeline,
+     reachability, markets, city_activity. The source code is at
+     https://github.com/mathdroid/karnak -->
+<meta name="ai-agents" content="The MCP server serves streamable HTTP at https://pantau.mathdro.id/mcp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
@@ -397,8 +398,9 @@
       <input id="reachHost" placeholder="host, e.g. example.com" autocomplete="off" spellcheck="false">
       <button type="submit">Add</button>
     </form>
-    <p class="reachnote">Two vantages: an Indonesian residential line (server) and your own
-      browser. Add any host and it's checked from your connection; your list stays in this browser.</p>
+    <p class="reachnote">The server checks each site from an Indonesian residential connection.
+      Your browser checks each site from your own connection. You can add any host.
+      Your list is stored only in this browser.</p>
   </section>
   </div>
 </main>
@@ -415,7 +417,7 @@
   <div class="fbar" id="health"></div>
   <div class="fmeta">
     <a href="https://github.com/mathdroid/karnak" target="_blank" rel="noopener">GitHub ↗</a>
-    <span class="agent">Agents: connect the MCP server (streamable HTTP) at
+    <span class="agent">AI agents can connect to the MCP server (streamable HTTP) at
       <a href="https://pantau.mathdro.id/mcp" target="_blank" rel="noopener">pantau.mathdro.id/mcp</a></span>
   </div>
 </footer>
@@ -463,7 +465,7 @@ function renderCities(counts) {
     `<div class="crow"><span class="nm">${c.city}</span>
        <span class="bar"><i class="${c.high?"hi":""}" style="width:${Math.round(c.count/max*100)}%"></i></span>
        <span class="n">${c.count}${c.high?" ⚠":""}</span></div>`).join("")
-    : `<div class="crow empty">No city-tagged reports in the last hour.</div>`;
+    : `<div class="crow empty">No city-tagged reports arrived in the last hour.</div>`;
 }
 $("wazebtn").onclick = () => { $("wazewrap").classList.toggle("on"); };
 
@@ -502,7 +504,7 @@ function renderStreams(streams) {
         <div class="meta">${isNew?'<span class="new">New</span>':""}
           ${s.viewers?`<span class="v">${s.viewers.toLocaleString("en-US")} watching</span>`:""}
           ${s.channel?`<span class="ch">${esc(s.channel)}</span>`:""}</div></div></div>`;
-  }).join("") : `<div class="empty-msg">No streams detected. Scanning continuously.</div>`;
+  }).join("") : `<div class="empty-msg">No live streams are detected. The monitor continues to scan.</div>`;
   document.querySelectorAll(".stream[data-v]").forEach(el => el.onclick = () => {
     if (wallOn) {  // wall open → give this stream audio focus instead of the single player
       setFocus(el.dataset.v);
@@ -538,7 +540,7 @@ function renderTimeline(events) {
           ${e.city ? `<span class="city">${e.city}</span>` : ""}
           <span>${rel(e.ts)} ago</span>
         </div></div></div>`;
-  }).join("") : `<div class="empty-msg">No items for this filter.</div>`;
+  }).join("") : `<div class="empty-msg">No items match this filter.</div>`;
   merged.forEach(e => seenIds.add(e.id));
 }
 
@@ -553,7 +555,7 @@ function renderPills(verdicts) {
   const blocked = Object.entries(verdicts).filter(([, v]) => v === "blocked").map(([t]) => PLATFORM[t]||t);
   $("alertbar").classList.toggle("on", blocked.length > 0);
   if (blocked.length) $("alertbar").innerHTML =
-    `<b>Access restricted</b> in Indonesia: ${blocked.join(", ")}. Still reachable from the direct path, so likely a local block. Prepare a VPN.`;
+    `<b>${blocked.join(", ")}</b> cannot be reached from the Indonesian connection. The direct connection reaches ${blocked.length > 1 ? "them" : "it"}, which indicates a local block. Prepare a VPN.`;
 }
 function renderBrief(brief, now) {
   const el = $("brief");
