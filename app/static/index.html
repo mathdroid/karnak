@@ -78,6 +78,8 @@
   main { display:grid; grid-template-columns:344px minmax(0,1fr) 392px; gap:1px;
          background:var(--hair); max-width:1760px; margin:0 auto; }
   section { background:var(--bg); min-width:0; display:flex; flex-direction:column; }
+  /* right column stacks Activity Map over Reachability with a hairline between */
+  .col3 { display:flex; flex-direction:column; min-width:0; gap:1px; background:var(--hair); }
   .head { display:flex; align-items:center; gap:10px; padding:16px 18px 12px; }
   .head h2 { font-family:var(--cond); font-size:13px; text-transform:uppercase; letter-spacing:.13em; font-weight:600; color:var(--dim); }
   .head .count { font-family:var(--mono); font-size:11px; color:var(--faint); }
@@ -92,7 +94,7 @@
   #player { display:none; padding:0 18px 14px; }
   #player.on { display:block; }
   #player iframe { width:100%; aspect-ratio:16/9; border:0; background:#000; }
-  #streams { overflow-y:auto; max-height:72vh; padding:0 18px 8px; display:flex; flex-direction:column; }
+  #streams { overflow-y:auto; max-height:76vh; padding:0 18px 8px; display:flex; flex-direction:column; }
   .stream { display:flex; gap:12px; padding:12px 0; border-top:1px solid var(--hair); cursor:pointer; }
   .stream:first-child { border-top:0; }
   .stream:hover .title { color:#fff; }
@@ -131,7 +133,7 @@
   #brief .bi .x { font-size:13px; line-height:1.45; color:var(--ink); }
   #brief .bi .x .pl { color:var(--warn); font-weight:600; }
   #brief .bi .x .cite { color:var(--accent); margin-left:5px; font-size:11px; white-space:nowrap; }
-  #timeline { overflow-y:auto; max-height:80vh; }
+  #timeline { overflow-y:auto; max-height:82vh; }
   /* Severity lives in the time rail as a tick — filled red for critical, hollow amber for
      watch — not a coloured left-border bar. No row tints. */
   .ev { display:grid; grid-template-columns:9px 42px 1fr; gap:0 10px; padding:11px 18px;
@@ -228,34 +230,61 @@
   .tile .cap .aud.on { color:var(--accent); }
   .wallhint { padding:8px 20px 14px; max-width:1760px; margin:0 auto; color:var(--faint); font-size:11.5px; }
 
+  /* ---- reachability table ---- */
+  #reachTable { overflow-y:auto; max-height:44vh; padding:2px 18px 4px; }
+  .rrow { display:grid; grid-template-columns:1fr 84px 84px 20px; gap:8px; align-items:center;
+       padding:8px 0; border-top:1px solid var(--hair); font-size:12.5px; }
+  .rrow:first-child { border-top:0; }
+  .rrow.hdr { border-top:0; color:var(--faint); font-family:var(--cond); text-transform:uppercase;
+       letter-spacing:.1em; font-size:10px; padding-bottom:4px; }
+  .rrow .site { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+  .rrow .st { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+       color:var(--dim); display:flex; align-items:center; gap:5px; }
+  .rrow .st .d { width:6px; height:6px; border-radius:50%; background:var(--faint); flex-shrink:0; }
+  .rrow .st.up .d { background:var(--ok); }
+  .rrow .st.down { color:var(--crit); font-weight:600; }
+  .rrow .st.down .d { background:var(--crit); }
+  .rrow .st.na { color:var(--faint); }
+  .rrow .st.na .d { background:transparent; }
+  .rrow .rm { background:none; border:0; color:var(--faint); cursor:pointer; font-size:15px; line-height:1; padding:0; }
+  .rrow .rm:hover { color:var(--ink); }
+  #reachAdd { display:flex; gap:6px; padding:10px 18px; border-top:1px solid var(--hair); }
+  #reachAdd input { flex:1; min-width:0; background:var(--inset); border:1px solid var(--hair); color:var(--ink);
+       font-family:var(--sans); font-size:12.5px; padding:6px 9px; border-radius:3px; }
+  #reachAdd input:focus { outline:none; border-color:var(--hair-2); }
+  #reachAdd input:first-child { flex:0 0 92px; }
+  #reachAdd button { background:var(--surface); border:1px solid var(--hair-2); color:var(--ink); font-family:var(--cond);
+       text-transform:uppercase; letter-spacing:.08em; font-size:11px; padding:6px 13px; border-radius:3px; cursor:pointer; }
+  .reachnote { padding:2px 18px 16px; color:var(--faint); font-size:11px; line-height:1.5; }
+
   /* ---- mobile tab bar (hidden on desktop) ---- */
   #tabbar { display:none; }
 
   @media (max-width:1180px) {
     main { grid-template-columns:1fr; }
-    #streams, #timeline { max-height:none; }
+    .col3 { display:contents; }           /* sections become direct tab targets */
+    #streams, #reachTable { max-height:none; }
     .bar { gap:10px 12px; }
-    /* reachability: full-width horizontal scroll strip, no wrap, no overflow */
-    .reach { order:3; width:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; gap:14px; }
-    .reach .label, #upd { display:none; }
-    #pills { flex-wrap:nowrap; }
+    .reach { display:none; }              /* reachability now has its own tab */
+    #upd { display:none; }
     #clock { margin-left:auto; }
 
     /* one panel at a time, chosen by the bottom tab bar */
     body { padding-bottom:54px; }
-    main > section[data-tab] { display:none; }
+    main section[data-tab] { display:none; }
     body[data-tab="feeds"]    section[data-tab="feeds"],
     body[data-tab="timeline"] section[data-tab="timeline"],
-    body[data-tab="map"]      section[data-tab="map"] { display:flex; }
+    body[data-tab="map"]      section[data-tab="map"],
+    body[data-tab="reach"]    section[data-tab="reach"] { display:flex; }
     #wall { display:none; }
     body[data-tab="wall"] #wall { display:block; }
     body[data-tab="wall"] main { display:none; }
     #wallClose { display:none; }         /* the tab bar handles leaving the wall */
     footer { display:none; }             /* health LEDs are desktop-only diagnostics */
 
-    #tabbar { display:grid; grid-template-columns:repeat(4,1fr); position:fixed; bottom:0; left:0; right:0;
+    #tabbar { display:grid; grid-template-columns:repeat(5,1fr); position:fixed; bottom:0; left:0; right:0;
          z-index:1200; background:rgba(13,13,13,.96); backdrop-filter:blur(12px); border-top:1px solid var(--hair); }
-    #tabbar button { font-family:var(--cond); text-transform:uppercase; letter-spacing:.1em; font-size:12px;
+    #tabbar button { font-family:var(--cond); text-transform:uppercase; letter-spacing:.08em; font-size:11px;
          background:none; border:0; border-left:1px solid var(--hair); color:var(--faint); padding:13px 0; cursor:pointer; }
     #tabbar button:first-child { border-left:0; }
     #tabbar button.on { color:var(--ink); }
@@ -329,6 +358,7 @@
   </section>
 
   <!-- RIGHT: geo -->
+  <div class="col3">
   <section data-tab="map">
     <div class="head"><h2>Activity Map</h2>
       <div class="right"><button class="chip" id="wazebtn">Waze jams</button></div>
@@ -338,12 +368,29 @@
     <div class="head"><h2>Cities · last hour</h2></div>
     <div id="cities"></div>
   </section>
+
+  <section data-tab="reach">
+    <div class="head"><h2>Reachability</h2>
+      <div class="right"><button class="refresh" id="reachRefresh" title="Re-check">↻</button></div>
+    </div>
+    <div id="reachTable"></div>
+    <form id="reachAdd">
+      <input id="reachLabel" placeholder="Label" autocomplete="off" spellcheck="false">
+      <input id="reachHost" placeholder="host, e.g. example.com" autocomplete="off" spellcheck="false">
+      <button type="submit">Add</button>
+    </form>
+    <p class="reachnote">Indonesia is checked from the server's residential exit. Your device
+      is checked from this browser only — nothing you add is opened or logged by us. Add any
+      site you want to watch (social platforms included) and it's tested from your connection.</p>
+  </section>
+  </div>
 </main>
 
 <nav id="tabbar">
   <button data-tab="timeline" class="on">Timeline</button>
   <button data-tab="feeds">Feeds</button>
   <button data-tab="map">Map</button>
+  <button data-tab="reach">Reach</button>
   <button data-tab="wall">Wall</button>
 </nav>
 
@@ -525,9 +572,9 @@ function renderHealth(sources, now) {
 async function refresh() {
   try {
     const d = await (await fetch("/api/summary")).json();
-    window._events = d.events; window._streams = d.streams;
+    window._events = d.events; window._streams = d.streams; window._verdicts = d.verdicts;
     renderStreams(d.streams); renderTimeline(d.events); renderPills(d.verdicts);
-    renderBrief(d.brief, d.now); renderMarkets(d.markets, d.now);
+    renderBrief(d.brief, d.now); renderMarkets(d.markets, d.now); renderReach();
     renderHealth(d.sources, d.now); drawCities(d.cityCounts); renderCities(d.cityCounts);
     if (wallOn) syncWall();
     // wall auto-opens on desktop only; on mobile it loads when its tab is tapped (9 videos is heavy)
@@ -609,6 +656,84 @@ $("tRefresh").onclick = () => {
   const b = $("tRefresh"); b.classList.remove("spin"); void b.offsetWidth; b.classList.add("spin");
   refresh();
 };
+
+// ---- reachability: server (Indonesia exit) + this browser, plus user-added rows ----
+const REACH_BUILTIN = [
+  {label:"X", host:"x.com", key:"x.com"},
+  {label:"TikTok", host:"tiktok.com", key:"tiktok"},
+  {label:"YouTube", host:"youtube.com", key:"youtube"},
+  {label:"Bluesky", host:"bsky.app", key:"bluesky"},
+  {label:"Telegram", host:"telegram.org", key:"telegram"},
+];
+const RKEY = "pantau.reach.v1";
+let clientState = {};
+const loadUserReach = () => { try { return JSON.parse(localStorage.getItem(RKEY)) || []; } catch (e) { return []; } };
+const saveUserReach = a => { try { localStorage.setItem(RKEY, JSON.stringify(a)); } catch (e) {} };
+function reachRows() {
+  return [...REACH_BUILTIN.map(b => ({...b, builtin:true})),
+          ...loadUserReach().map(u => ({...u, builtin:false}))];
+}
+function stCell(state) {
+  const m = {up:["up","reachable"], down:["down","blocked"], na:["na","—"], wait:["","checking"]};
+  const [cls, txt] = m[state] || m.wait;
+  return `<span class="st ${cls}"><span class="d"></span>${txt}</span>`;
+}
+function serverState(key) {
+  const v = (window._verdicts || {})[key];
+  if (v === "ok") return "up";
+  if (v === "blocked" || v === "down") return "down";
+  return "wait";
+}
+function renderReach() {
+  const rows = reachRows();
+  const html = [`<div class="rrow hdr"><span>Site</span><span>Indonesia</span><span>Your device</span><span></span></div>`];
+  rows.forEach(r => {
+    html.push(`<div class="rrow" data-host="${esc(r.host)}">
+      <span class="site">${esc(r.label || r.host)}</span>
+      <span class="scol">${stCell(r.builtin ? serverState(r.key) : "na")}</span>
+      <span class="ccol">${stCell(clientState[r.host] || "wait")}</span>
+      ${r.builtin ? "<span></span>" : `<button class="rm" data-rm="${esc(r.host)}" title="Remove">×</button>`}</div>`);
+  });
+  $("reachTable").innerHTML = html.join("");
+  $("reachTable").querySelectorAll(".rm").forEach(b => b.onclick = () => {
+    saveUserReach(loadUserReach().filter(x => x.host !== b.dataset.rm));
+    delete clientState[b.dataset.rm]; renderReach();
+  });
+}
+// Runs in the VIEWER's browser only — a no-cors probe that resolves if their network
+// can reach the host, rejects/timeouts if it can't. Nothing is sent to our servers.
+function clientCheck(host) {
+  const url = /^https?:\/\//.test(host) ? host : "https://" + host;
+  return new Promise(res => {
+    const ac = new AbortController(), t = setTimeout(() => { ac.abort(); res("down"); }, 6000);
+    fetch(url, {mode:"no-cors", cache:"no-store", signal:ac.signal})
+      .then(() => { clearTimeout(t); res("up"); })
+      .catch(() => { clearTimeout(t); res("down"); });
+  });
+}
+async function runClientChecks() {
+  const rows = reachRows();
+  await Promise.all(rows.map(async r => {
+    if (clientState[r.host] === undefined) clientState[r.host] = "wait";
+    const s = await clientCheck(r.host);
+    clientState[r.host] = s;
+    const cell = $("reachTable").querySelector(`.rrow[data-host="${r.host}"] .ccol`);
+    if (cell) cell.innerHTML = stCell(s);
+  }));
+}
+$("reachAdd").onsubmit = e => {
+  e.preventDefault();
+  const host = $("reachHost").value.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+  const label = $("reachLabel").value.trim() || host;
+  if (!host || !host.includes(".")) return;
+  const a = loadUserReach();
+  if (!a.some(x => x.host === host)) { a.push({label, host}); saveUserReach(a); }
+  $("reachLabel").value = ""; $("reachHost").value = "";
+  renderReach(); runClientChecks();
+};
+$("reachRefresh").onclick = () => { runClientChecks(); };
+renderReach(); runClientChecks();
+setInterval(runClientChecks, 60000);
 
 // mobile tabs — one panel at a time
 function setTab(name) {

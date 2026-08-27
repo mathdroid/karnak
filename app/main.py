@@ -190,7 +190,9 @@ async def add_events(rows):
         for eid, ts, source, title, url, publisher in rows:
             city, sev = classify(title)
             cur = db.execute(
-                "INSERT OR IGNORE INTO events VALUES(?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO events "
+                "(id,ts,source,title,url,publisher,city,sev,first_seen) "
+                "VALUES(?,?,?,?,?,?,?,?,?)",
                 (eid, ts, source, title.strip(), url, publisher, city, sev, now))
             new += cur.rowcount
         db.commit()
