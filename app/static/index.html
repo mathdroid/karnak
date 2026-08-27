@@ -608,7 +608,9 @@ async function refresh() {
 }
 
 // ---- video wall: all live YouTube streams at once, one audio focus ----
-let wallOn = false, players = {}, focusVid = null, muteAll = false, wallAutoOpened = false;
+// audioOn stays false until a user tap: browsers block unMute() without a gesture
+// and pause that player, so the default-focused (top-viewers) tile would freeze.
+let wallOn = false, players = {}, focusVid = null, muteAll = false, wallAutoOpened = false, audioOn = false;
 const WALL_CAP = 9;
 function ytLives() { return (window._streams || []).filter(s => s.src !== "tiktok").slice(0, WALL_CAP); }
 function loadYT(cb) {
@@ -659,19 +661,24 @@ function syncWall() {
   applyAudio();
   $("wallCount").textContent = lives.length + " live";
 }
-function setFocus(vid) { focusVid = vid; applyAudio(); }
+function setFocus(vid) {  // called from a tap → unmute is permitted
+  focusVid = vid; audioOn = true; applyAudio();
+  try { if (players[vid]) players[vid].playVideo(); } catch (e) {}  // restart a player the browser paused
+}
 function applyAudio() {
   Object.entries(players).forEach(([vid, p]) => {
     const focused = vid === focusVid, tile = document.getElementById("tile_" + vid);
+    const on = focused && !muteAll && audioOn;
     if (tile) tile.classList.toggle("focus", focused);
-    try { if (focused && !muteAll) { p.unMute(); p.setVolume(100); } else { p.mute(); } } catch (e) {}
-    if (tile) { const a = tile.querySelector(".aud"); if (a) { const on = focused && !muteAll; a.textContent = on ? "audio" : "muted"; a.classList.toggle("on", on); } }
+    try { if (on) { p.unMute(); p.setVolume(100); } else { p.mute(); } } catch (e) {}
+    if (tile) { const a = tile.querySelector(".aud"); if (a) { a.textContent = on ? "audio" : (focused ? "tap for audio" : "muted"); a.classList.toggle("on", on); } }
   });
 }
 $("wallToggle").onclick = () => wallOn ? closeWall() : openWall();
 $("wallClose").onclick = closeWall;
 $("muteAll").onclick = () => {
   muteAll = !muteAll;
+  if (!muteAll) audioOn = true;  // the click is a gesture, so unmuting the focus is permitted
   $("muteAll").classList.toggle("on", muteAll);
   $("muteAll").textContent = muteAll ? "Unmute" : "Mute all";
   applyAudio();
