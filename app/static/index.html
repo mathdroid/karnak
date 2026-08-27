@@ -4,7 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>PANTAU — Situational Monitor</title>
+<title>PANTAU · Indonesia Situational Monitor</title>
+<meta name="description" content="Live OSINT monitor for Indonesia: a wall of live streams, an AI situation brief, a fused news timeline, market indicators, and a network reachability watch.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PANTAU">
+<meta property="og:title" content="PANTAU · Indonesia Situational Monitor">
+<meta property="og:description" content="A wall of live streams, an AI situation brief, a fused news timeline, markets, and a reachability watch. All public sources.">
+<meta property="og:url" content="https://pantau.mathdro.id">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PANTAU · Indonesia Situational Monitor">
+<meta name="twitter:description" content="A wall of live streams, an AI situation brief, a fused news timeline, markets, and a reachability watch.">
+<!-- For agentic / AI users: a Model Context Protocol (MCP) server exposing this
+     monitor's feed is in progress. Track or contribute at
+     https://github.com/mathdroid/karnak -->
+<meta name="ai-agents" content="MCP server in progress: https://github.com/mathdroid/karnak">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
@@ -195,6 +208,10 @@
   .fbar .s .led.ok { background:var(--ok); }
   .fbar .s .led.err { background:var(--crit); }
   .fbar .s .n { font-family:var(--mono); color:var(--faint); }
+  .fmeta { display:flex; gap:16px; flex-wrap:wrap; align-items:baseline; padding:0 20px 14px; font-size:11px; }
+  .fmeta a { color:var(--dim); }
+  .fmeta a:hover { color:var(--ink); text-decoration:underline; }
+  .fmeta .agent { color:var(--faint); }
 
   /* ---- video wall ---- */
   .wallbtn { font-size:11px; text-transform:uppercase; letter-spacing:.1em; font-weight:600;
@@ -280,7 +297,7 @@
     body[data-tab="wall"] #wall { display:block; }
     body[data-tab="wall"] main { display:none; }
     #wallClose { display:none; }         /* the tab bar handles leaving the wall */
-    footer { display:none; }             /* health LEDs are desktop-only diagnostics */
+    #health { display:none; }            /* LED diagnostics are desktop-only; keep footer links */
 
     #tabbar { display:grid; grid-template-columns:repeat(5,1fr); position:fixed; bottom:0; left:0; right:0;
          z-index:1200; background:rgba(13,13,13,.96); backdrop-filter:blur(12px); border-top:1px solid var(--hair); }
@@ -396,6 +413,11 @@
 
 <footer>
   <div class="fbar" id="health"></div>
+  <div class="fmeta">
+    <a href="https://github.com/mathdroid/karnak" target="_blank" rel="noopener">GitHub ↗</a>
+    <span class="agent">Agents: a Model Context Protocol (MCP) server for this feed is in progress
+      → <a href="https://github.com/mathdroid/karnak" target="_blank" rel="noopener">github.com/mathdroid/karnak</a></span>
+  </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -427,7 +449,7 @@ function drawCities(counts) {
       radius: Math.min(5 + count * 1.4, 20),
       color: high > 0 ? "#ffffff" : "#8a8a8a", weight:1.2, fillOpacity:.28,
     }).bindPopup(
-      `<b style="text-transform:capitalize">${city}</b> — ${count}/h${high?`, ${high} critical`:""}<br>` +
+      `<b style="text-transform:capitalize">${city}</b> · ${count}/h${high?`, ${high} critical`:""}<br>` +
       `<a href="https://www.youtube.com/results?search_query=${q.replace(/%20/g,"+")}&sp=EgJAAQ%3D%3D" target="_blank">YT live</a> · ` +
       `<a href="https://www.tiktok.com/search/live?q=${q}" target="_blank">TikTok</a> · ` +
       `<a href="https://x.com/search?q=${q}&f=live" target="_blank">X</a>`
@@ -525,13 +547,13 @@ const P_ORDER = ["x.com","tiktok","youtube","bluesky","telegram"];
 function renderPills(verdicts) {
   $("pills").innerHTML = P_ORDER.filter(t => verdicts[t]).map(t => {
     const v = verdicts[t];
-    const mark = v==="ok"?"reachable":v==="blocked"?"BLOCKED":v==="down"?"down":"—";
+    const mark = v==="ok"?"reachable":v==="blocked"?"BLOCKED":v==="down"?"down":"·";
     return `<span class="pill ${v}"><span class="d"></span>${PLATFORM[t]} · ${mark}</span>`;
   }).join("");
   const blocked = Object.entries(verdicts).filter(([, v]) => v === "blocked").map(([t]) => PLATFORM[t]||t);
   $("alertbar").classList.toggle("on", blocked.length > 0);
   if (blocked.length) $("alertbar").innerHTML =
-    `<b>Access restricted</b> from Indonesian residential network: ${blocked.join(", ")} — prepare VPN. Singapore control path remains nominal.`;
+    `<b>Access restricted</b> from Indonesian residential network: ${blocked.join(", ")} · prepare VPN. Control path remains nominal.`;
 }
 function renderBrief(brief, now) {
   const el = $("brief");
@@ -674,7 +696,7 @@ function reachRows() {
           ...loadUserReach().map(u => ({...u, builtin:false}))];
 }
 function stCell(state) {
-  const m = {up:["up","reachable"], down:["down","blocked"], na:["na","—"], wait:["","checking"]};
+  const m = {up:["up","reachable"], down:["down","blocked"], na:["na","n/a"], wait:["","checking"]};
   const [cls, txt] = m[state] || m.wait;
   return `<span class="st ${cls}"><span class="d"></span>${txt}</span>`;
 }
