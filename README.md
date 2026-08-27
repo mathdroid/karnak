@@ -1,5 +1,8 @@
 # Pantau
 
+> Repo codename **Karnak** — Ozymandias's fortress and its wall of monitors in *Watchmen*.
+> The running product is **Pantau** (Indonesian: *to watch / monitor*).
+
 A single-screen OSINT situational monitor. It fuses public, real-time sources for a
 fast-moving civic event into one operations view: a wall of live news streams playing
 at once, a synthesized situation brief, a fused news timeline, an activity map, market
