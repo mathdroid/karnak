@@ -168,6 +168,18 @@ def classify(text):
     return city, sev
 
 
+# /api/summary is public, and status errors surface in the footer. Strip anything that
+# could leak infra: API keys, proxy URLs, and IP/host addresses (incl. tailnet IPs).
+_REDACT = re.compile(
+    r"sk-or-v1-[A-Za-z0-9_-]+|euler_[A-Za-z0-9_-]+|socks5?://\S+|hostrelay"
+    r"|\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b"          # IPv4 (+port)
+    r"|\b[A-Fa-f0-9]{0,4}(?::[A-Fa-f0-9]{0,4}){2,}\b", re.I)  # IPv6 (incl. ::)
+
+
+def sanitize_err(msg):
+    return _REDACT.sub("[redacted]", msg or "")
+
+
 async def record_status(source, ok, note, items=0):
     async with db_lock:
         if ok:
@@ -179,7 +191,7 @@ async def record_status(source, ok, note, items=0):
             db.execute(
                 "INSERT INTO source_status VALUES(?,0,?,0) ON CONFLICT(source) "
                 "DO UPDATE SET last_err=excluded.last_err",
-                (source, note[:200]))
+                (source, sanitize_err(note)[:200]))
         db.commit()
 
 
