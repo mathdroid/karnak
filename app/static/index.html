@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>PANTAU — Situational Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    /* Monochrome. No hue in chrome — signals are carried by weight, symbols and
+       brightness, not by colour. Pure white is the single "attention" value. */
+    --bg:#0d0d0d; --surface:#161616; --inset:#101010;
+    --hair:#242424; --hair-2:#343434;
+    --ink:#ededed; --dim:#9a9a9a; --faint:#606060;
+    --accent:#ededed;   /* interactive — brightness + underline, not colour */
+    --crit:#ffffff;     /* critical / attention = pure white */
+    --crit-bg:#1a1a1a;
+    --warn:#c4c4c4;     /* secondary emphasis (location) */
+    --ok:#8a8a8a;
+    --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--sans);
+         font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+         overflow-wrap:break-word; }
+  /* grid/flex children must be allowed to shrink so long text wraps instead of overflowing */
+  .ev > div, #brief .bi .x, .stream > div, .crow .nm { min-width:0; overflow-wrap:anywhere; }
+  a { color:inherit; text-decoration:none; }
+  .ev .title a:hover, #brief .bi .cite:hover, .stream:hover .title { text-decoration:underline; }
+  .mono { font-family:var(--mono); font-feature-settings:"tnum" 1; }
+  .label { font-family:var(--cond); font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--faint); font-weight:600; }
+
+  /* ---- masthead ---- */
+  header { position:sticky; top:0; z-index:1000; background:rgba(13,13,13,.9);
+           backdrop-filter:blur(12px); border-bottom:1px solid var(--hair); }
+  .bar { display:flex; align-items:center; gap:18px; padding:11px 20px; max-width:1760px; margin:0 auto; flex-wrap:wrap; }
+  .wordmark { display:flex; align-items:baseline; gap:11px; }
+  .wordmark b { font-family:var(--cond); font-size:20px; font-weight:700; letter-spacing:.2em; }
+  .wordmark .sub { font-family:var(--cond); font-size:12px; text-transform:uppercase; letter-spacing:.1em;
+       color:var(--faint); padding-left:11px; border-left:1px solid var(--hair-2); }
+  #clock { font-family:var(--mono); font-size:13px; color:var(--dim); letter-spacing:.02em; }
+  .reach { display:flex; align-items:center; gap:12px; margin-left:auto; flex-wrap:wrap; }
+  .reach .label { margin-right:-4px; }
+  #pills { display:flex; gap:14px; }
+  .pill { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); }
+  .pill .d { width:5px; height:5px; border-radius:50%; background:var(--faint); flex-shrink:0; }
+  .pill.ok .d { background:var(--ok); }
+  .pill.blocked { color:var(--crit); font-weight:600; }
+  .pill.blocked .d { background:var(--crit); }
+  .pill.down .d, .pill.vantage-down .d { background:var(--warn); }
+  #upd { font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+  #upd.stale { color:var(--warn); }
+
+  .markets { display:flex; gap:24px; align-items:center; padding:7px 20px; border-bottom:1px solid var(--hair);
+       background:var(--bg); overflow-x:auto; }
+  .markets.empty { display:none; }
+  .markets .m { display:flex; align-items:baseline; gap:7px; white-space:nowrap; }
+  .markets .m .l { color:var(--dim); text-transform:uppercase; letter-spacing:.08em; font-size:10.5px; font-weight:600; }
+  .markets .m .p { font-family:var(--mono); font-size:12.5px; color:var(--ink); }
+  .markets .m .c { font-family:var(--mono); font-size:11.5px; }
+  .markets .m .c { color:var(--dim); }
+  .markets .m .c.up { color:var(--ink); }
+  .markets .mupd { margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--faint); flex-shrink:0; padding-left:16px; }
+
+  #alertbar { display:none; border-bottom:1px solid var(--hair-2); background:var(--surface);
+              color:var(--ink); font-size:13px; padding:8px 20px; }
+  #alertbar.on { display:block; }
+  #alertbar b { color:var(--crit); font-weight:600; }
+
+  /* ---- grid ---- */
+  main { display:grid; grid-template-columns:344px minmax(0,1fr) 392px; gap:1px;
+         background:var(--hair); max-width:1760px; margin:0 auto; }
+  section { background:var(--bg); min-width:0; display:flex; flex-direction:column; }
+  .head { display:flex; align-items:center; gap:10px; padding:16px 18px 12px; }
+  .head h2 { font-family:var(--cond); font-size:13px; text-transform:uppercase; letter-spacing:.13em; font-weight:600; color:var(--dim); }
+  .head .count { font-family:var(--mono); font-size:11px; color:var(--faint); }
+  .head .right { margin-left:auto; display:flex; align-items:center; }
+  .refresh { font-family:var(--sans); font-size:15px; line-height:1; background:none; border:1px solid var(--hair);
+       color:var(--dim); width:27px; height:27px; border-radius:3px; cursor:pointer; margin-right:8px; flex-shrink:0; }
+  .refresh:hover { color:var(--ink); border-color:var(--hair-2); }
+  .refresh.spin { animation:spin .6s linear; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ---- streams ---- */
+  #player { display:none; padding:0 18px 14px; }
+  #player.on { display:block; }
+  #player iframe { width:100%; aspect-ratio:16/9; border:0; background:#000; }
+  #streams { overflow-y:auto; max-height:72vh; padding:0 18px 8px; display:flex; flex-direction:column; }
+  .stream { display:flex; gap:12px; padding:12px 0; border-top:1px solid var(--hair); cursor:pointer; }
+  .stream:first-child { border-top:0; }
+  .stream:hover .title { color:#fff; }
+  .stream .thumb { position:relative; width:112px; height:63px; flex-shrink:0; background:var(--inset); overflow:hidden; }
+  .stream .thumb img { width:100%; height:100%; object-fit:cover; filter:saturate(.92); }
+  .stream .thumb .lv { position:absolute; left:5px; bottom:5px; display:flex; align-items:center; gap:4px;
+       background:rgba(0,0,0,.7); padding:1px 5px; font-size:8.5px; letter-spacing:.1em; font-weight:700; }
+  .stream .thumb .lv i { width:5px; height:5px; background:var(--crit); border-radius:50%; }
+  .stream .title { font-size:13px; line-height:1.32; font-weight:500; color:var(--ink);
+       display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .stream .meta { font-size:11px; color:var(--faint); margin-top:6px; display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
+  .stream .meta .v { font-family:var(--mono); color:var(--dim); }
+  .stream .meta .new { color:var(--warn); letter-spacing:.1em; font-size:9.5px; font-weight:700; text-transform:uppercase; }
+  .stream .meta .ch { color:var(--dim); }
+  .stream.tt { text-decoration:none; }
+  .thumb.tt { display:flex; align-items:center; justify-content:center; background:#111417; border:1px solid var(--hair); }
+  .thumb.tt .ttmark { font-weight:700; font-size:13px; letter-spacing:-.02em; color:var(--ink); opacity:.85; }
+  .stream .meta .plat { text-transform:uppercase; letter-spacing:.1em; font-size:9.5px; font-weight:700; color:var(--dim); }
+
+  /* ---- timeline ---- */
+  .seg { display:inline-flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button { font-family:var(--sans); font-size:11.5px; border:0; background:transparent; color:var(--faint);
+       padding:5px 11px; cursor:pointer; border-left:1px solid var(--hair); letter-spacing:.01em; }
+  .seg button:first-child { border-left:0; }
+  .seg button.on { background:var(--surface); color:var(--ink); }
+  #brief { margin:12px 18px 10px; border:1px solid var(--hair-2); border-radius:6px; background:var(--inset); }
+  #brief.empty { display:none; }
+  #brief .bh { display:flex; align-items:center; gap:9px; padding:11px 13px 9px; border-bottom:1px solid var(--hair); }
+  #brief .bh .ai { font-family:var(--cond); font-size:11px; font-weight:600; letter-spacing:.14em;
+       text-transform:uppercase; color:var(--faint); }
+  #brief .bh h3 { font-family:var(--cond); font-size:13px; text-transform:uppercase; letter-spacing:.13em; color:var(--ink); font-weight:600; }
+  #brief .bh .upd { margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--faint); }
+  #brief .bi { display:grid; grid-template-columns:44px 1fr; gap:11px; padding:7px 13px; border-top:1px solid var(--hair); }
+  #brief .bi:first-of-type { border-top:0; }
+  #brief .bi time { font-family:var(--mono); font-size:11.5px; color:var(--accent); }
+  #brief .bi .x { font-size:13px; line-height:1.45; color:var(--ink); }
+  #brief .bi .x .pl { color:var(--warn); font-weight:600; }
+  #brief .bi .x .cite { color:var(--accent); margin-left:5px; font-size:11px; white-space:nowrap; }
+  #timeline { overflow-y:auto; max-height:80vh; }
+  /* Severity lives in the time rail as a tick — filled red for critical, hollow amber for
+     watch — not a coloured left-border bar. No row tints. */
+  .ev { display:grid; grid-template-columns:9px 42px 1fr; gap:0 10px; padding:11px 18px;
+        border-top:1px solid var(--hair); }
+  .ev:first-child { border-top:0; }
+  .ev .tk { width:7px; height:7px; border-radius:50%; margin-top:5px; background:transparent; }
+  .ev.sev-high .tk { background:var(--crit); }
+  .ev.sev-med .tk { border:1px solid var(--warn); }
+  .ev.fresh { animation:settle 1.6s ease-out; }
+  @keyframes settle { from { background:rgba(84,179,173,.07); } }
+  .ev time { font-family:var(--mono); font-size:11.5px; color:var(--faint); padding-top:1px; }
+  .ev.sev-high time { color:var(--crit); }
+  .ev .title { font-size:13.5px; line-height:1.4; color:var(--ink); }
+  .ev:hover .title { color:#fff; }
+  .ev .sum { margin-top:4px; font-size:12.5px; line-height:1.45; color:var(--dim); }
+  .ev .sum .ai { display:inline-block; font-size:8.5px; font-weight:700; letter-spacing:.12em;
+       color:var(--accent); border:1px solid var(--hair-2); border-radius:2px; padding:0 4px;
+       margin-right:7px; vertical-align:1px; }
+  .ev .meta { margin-top:5px; font-size:11px; color:var(--faint); display:flex; gap:0; align-items:center; flex-wrap:wrap; }
+  .ev .meta > * { position:relative; }
+  .ev .meta > * + *::before { content:"·"; margin:0 7px; color:var(--hair-2); }
+  .ev .meta .tag { text-transform:uppercase; letter-spacing:.1em; font-size:9.5px; font-weight:700; color:var(--dim); }
+  .ev .meta .tag.hi { color:var(--crit); }
+  .ev .meta .city { color:var(--warn); text-transform:capitalize; }
+  .ev .meta .src { color:var(--faint); }
+
+  /* ---- map + cities ---- */
+  #map { height:300px; background:var(--bg); }
+  .leaflet-container { background:#0a0b0d; font-family:var(--sans); }
+  .leaflet-popup-content-wrapper { background:var(--surface); color:var(--ink); border:1px solid var(--hair-2); border-radius:3px; box-shadow:none; }
+  .leaflet-popup-tip { background:var(--surface); }
+  .leaflet-popup-content { margin:9px 12px; font-size:12px; }
+  .leaflet-popup-content a { color:var(--accent); }
+  #cities { padding:6px 18px 14px; }
+  .crow { display:grid; grid-template-columns:1fr 46px 40px; gap:10px; align-items:center;
+          padding:8px 0; border-top:1px solid var(--hair); font-size:12.5px; }
+  .crow:first-child { border-top:0; }
+  .crow .nm { text-transform:capitalize; color:var(--ink); }
+  .crow .bar { height:3px; background:var(--hair); position:relative; }
+  .crow .bar i { position:absolute; left:0; top:0; bottom:0; background:var(--dim); }
+  .crow .bar i.hi { background:var(--crit); }
+  .crow .n { font-family:var(--mono); font-size:11.5px; color:var(--dim); text-align:right; }
+  .crow.empty { color:var(--faint); grid-template-columns:1fr; }
+
+  .toolrow { padding:12px 18px; border-top:1px solid var(--hair); display:flex; gap:7px; flex-wrap:wrap; }
+  .chip { font-size:10.5px; text-transform:uppercase; letter-spacing:.1em; font-weight:600;
+          border:1px solid var(--hair); color:var(--dim); padding:5px 10px; border-radius:2px; }
+  .chip:hover { border-color:var(--hair-2); color:var(--ink); }
+  #wazewrap { display:none; padding:0 18px 14px; }
+  #wazewrap.on { display:block; }
+  #wazewrap iframe { width:100%; height:280px; border:1px solid var(--hair); }
+
+  .empty-msg { color:var(--faint); font-size:12.5px; padding:14px 18px; }
+
+  footer { border-top:1px solid var(--hair); max-width:1760px; margin:0 auto; }
+  .fbar { display:flex; gap:20px; flex-wrap:wrap; align-items:center; padding:12px 20px; }
+  .fbar .s { display:flex; gap:6px; align-items:center; font-size:11px; color:var(--dim); }
+  .fbar .s .led { width:6px; height:6px; border-radius:50%; background:var(--faint); }
+  .fbar .s .led.ok { background:var(--ok); }
+  .fbar .s .led.err { background:var(--crit); }
+  .fbar .s .n { font-family:var(--mono); color:var(--faint); }
+
+  /* ---- video wall ---- */
+  .wallbtn { font-size:11px; text-transform:uppercase; letter-spacing:.1em; font-weight:600;
+       border:1px solid var(--hair); color:var(--dim); background:none; padding:5px 10px;
+       border-radius:2px; cursor:pointer; }
+  .wallbtn.on, .wallbtn:hover { border-color:var(--accent); color:var(--ink); }
+  .wall { display:none; border-bottom:1px solid var(--hair); background:var(--bg); }
+  .wall.on { display:block; }
+  .whead { display:flex; align-items:center; gap:10px; padding:14px 20px 10px; max-width:1760px; margin:0 auto; }
+  .whead h2 { font-family:var(--cond); font-size:13px; text-transform:uppercase; letter-spacing:.13em; color:var(--dim); font-weight:600; }
+  .whead .count { font-family:var(--mono); font-size:11px; color:var(--faint); margin-left:6px; }
+  .whead .wctl { margin-left:auto; display:flex; gap:7px; }
+  .whead button.chip { cursor:pointer; background:none; font-family:var(--sans); }
+  .whead button.chip.on { border-color:var(--accent); color:var(--ink); }
+  #wallGrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+       gap:1px; background:var(--hair); max-width:1760px; margin:0 auto; grid-auto-flow:dense; }
+  .tile { position:relative; aspect-ratio:16/9; background:#000; overflow:hidden; cursor:pointer; }
+  .tile > .ytmount, .tile iframe { width:100%; height:100%; border:0; display:block; }
+  /* Click-catcher: the iframe swallows clicks, so this transparent layer captures them
+     for focus/audio (a real user gesture, required to unmute). Leaves the bottom 42px
+     of the player free so YouTube's own controls stay usable. */
+  .tile .tap { position:absolute; top:0; left:0; right:0; bottom:42px; z-index:3; cursor:pointer; }
+  .tile .tap::after { content:"click for audio"; position:absolute; top:8px; left:8px; font-size:9.5px;
+       letter-spacing:.1em; text-transform:uppercase; color:#fff; background:rgba(0,0,0,.55);
+       padding:2px 6px; opacity:0; transition:opacity .15s; }
+  .tile:not(.focus) .tap:hover::after { opacity:1; }
+  .tile.focus { grid-column:span 2; grid-row:span 2; order:-1; outline:2px solid var(--accent); outline-offset:-2px; z-index:2; }
+  .tile .cap { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between;
+       align-items:center; gap:8px; padding:5px 8px; background:linear-gradient(transparent,rgba(0,0,0,.82));
+       font-size:11px; pointer-events:none; }
+  .tile .cap .ch { color:#fff; opacity:.92; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tile .cap .aud { text-transform:uppercase; letter-spacing:.1em; font-size:9px; font-weight:700; color:var(--faint); flex-shrink:0; }
+  .tile .cap .aud.on { color:var(--accent); }
+  .wallhint { padding:8px 20px 14px; max-width:1760px; margin:0 auto; color:var(--faint); font-size:11.5px; }
+
+  /* ---- mobile tab bar (hidden on desktop) ---- */
+  #tabbar { display:none; }
+
+  @media (max-width:1180px) {
+    main { grid-template-columns:1fr; }
+    #streams, #timeline { max-height:none; }
+    .bar { gap:10px 12px; }
+    /* reachability: full-width horizontal scroll strip, no wrap, no overflow */
+    .reach { order:3; width:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; gap:14px; }
+    .reach .label, #upd { display:none; }
+    #pills { flex-wrap:nowrap; }
+    #clock { margin-left:auto; }
+
+    /* one panel at a time, chosen by the bottom tab bar */
+    body { padding-bottom:54px; }
+    main > section[data-tab] { display:none; }
+    body[data-tab="feeds"]    section[data-tab="feeds"],
+    body[data-tab="timeline"] section[data-tab="timeline"],
+    body[data-tab="map"]      section[data-tab="map"] { display:flex; }
+    #wall { display:none; }
+    body[data-tab="wall"] #wall { display:block; }
+    body[data-tab="wall"] main { display:none; }
+    #wallClose { display:none; }         /* the tab bar handles leaving the wall */
+    footer { display:none; }             /* health LEDs are desktop-only diagnostics */
+
+    #tabbar { display:grid; grid-template-columns:repeat(4,1fr); position:fixed; bottom:0; left:0; right:0;
+         z-index:1200; background:rgba(13,13,13,.96); backdrop-filter:blur(12px); border-top:1px solid var(--hair); }
+    #tabbar button { font-family:var(--cond); text-transform:uppercase; letter-spacing:.1em; font-size:12px;
+         background:none; border:0; border-left:1px solid var(--hair); color:var(--faint); padding:13px 0; cursor:pointer; }
+    #tabbar button:first-child { border-left:0; }
+    #tabbar button.on { color:var(--ink); }
+    #wallGrid { grid-template-columns:1fr; }   /* one video per row on phones */
+    .markets { gap:18px; }
+  }
+  ::-webkit-scrollbar { width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb { background:var(--hair-2); border-radius:0; }
+  ::-webkit-scrollbar-track { background:transparent; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="wordmark">
+      <b>PANTAU</b>
+    </div>
+    <span id="clock" class="mono">--:--:-- WIB</span>
+    <button id="wallToggle" class="wallbtn">▦ Video wall</button>
+    <div class="reach">
+      <span class="label">Reachability · ID</span>
+      <div id="pills"></div>
+      <span id="upd">connecting</span>
+    </div>
+  </div>
+</header>
+<div id="markets" class="markets empty"></div>
+<div id="alertbar"></div>
+
+<section id="wall" class="wall">
+  <div class="whead">
+    <h2>Video Wall <span class="count" id="wallCount">0 live</span></h2>
+    <div class="wctl">
+      <button class="chip" id="muteAll">Mute all</button>
+      <button class="chip" id="wallClose">Close</button>
+    </div>
+  </div>
+  <div id="wallGrid"></div>
+</section>
+
+<main>
+  <!-- LEFT: live streams -->
+  <section data-tab="feeds">
+    <div class="head"><h2>Live Feeds</h2><span class="count" id="nstreams">0</span></div>
+    <div id="player"></div>
+    <div id="streams"></div>
+    <div class="toolrow">
+      <a class="chip" href="https://www.tiktok.com/search/live?q=demo%20dpr">TikTok · demo dpr</a>
+      <a class="chip" href="https://www.tiktok.com/search/live?q=demo">TikTok · demo</a>
+      <a class="chip" href="https://www.youtube.com/results?search_query=demo&sp=EgJAAQ%3D%3D">YouTube live</a>
+      <a class="chip" href="https://x.com/search?q=demo%20dpr&f=live">X · demo dpr</a>
+      <a class="chip" href="https://x.com/TMCPoldaMetro">TMC Polda</a>
+    </div>
+  </section>
+
+  <!-- CENTER: timeline -->
+  <section data-tab="timeline">
+    <div class="head"><h2>Timeline</h2><span class="count" id="nevents">0</span>
+      <div class="right">
+        <button class="refresh" id="tRefresh" title="Refresh now">↻</button>
+        <div class="seg" id="filters">
+          <button class="on" data-f="all">All</button>
+          <button data-f="high">Critical</button>
+          <button data-f="news">Press</button>
+        </div>
+      </div>
+    </div>
+    <div id="brief"></div>
+    <div id="timeline"></div>
+  </section>
+
+  <!-- RIGHT: geo -->
+  <section data-tab="map">
+    <div class="head"><h2>Activity Map</h2>
+      <div class="right"><button class="chip" id="wazebtn">Waze jams</button></div>
+    </div>
+    <div id="map"></div>
+    <div id="wazewrap"><iframe loading="lazy" src="https://embed.waze.com/iframe?zoom=13&lat=-6.2010&lon=106.8100&ct=livemap" title="Waze"></iframe></div>
+    <div class="head"><h2>Cities · last hour</h2></div>
+    <div id="cities"></div>
+  </section>
+</main>
+
+<nav id="tabbar">
+  <button data-tab="timeline" class="on">Timeline</button>
+  <button data-tab="feeds">Feeds</button>
+  <button data-tab="map">Map</button>
+  <button data-tab="wall">Wall</button>
+</nav>
+
+<footer>
+  <div class="fbar" id="health"></div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const CITY_XY = {
+  jakarta:[-6.2088,106.8456], makassar:[-5.1477,119.4327], medan:[3.5952,98.6722],
+  surabaya:[-7.2575,112.7521], semarang:[-6.9667,110.4167], bandung:[-6.9175,107.6191],
+  yogyakarta:[-7.7956,110.3695], palembang:[-2.9761,104.7754], pati:[-6.7559,111.0380],
+  jayapura:[-2.5337,140.7181], sorong:[-0.8762,131.2558], wamena:[-4.0972,138.95],
+  nabire:[-3.3684,135.4963], aceh:[5.5483,95.3238], denpasar:[-8.6705,115.2126],
+  papua:[-4.0,138.0],
+};
+const HOTSPOTS = [["DPR RI",-6.2098,106.8000],["Bundaran HI",-6.1949,106.8230],["Monas / Patung Kuda",-6.1743,106.8254]];
+
+const map = L.map("map", {zoomControl:false, attributionControl:false}).setView([-3.5, 117], 4);
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services";
+L.tileLayer(ESRI + "/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {maxZoom:16}).addTo(map);
+L.tileLayer(ESRI + "/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {maxZoom:16, opacity:.6}).addTo(map);
+HOTSPOTS.forEach(([n, la, lo]) => L.circleMarker([la, lo], {radius:3, color:"#ededed", weight:1.5, fillOpacity:.9})
+  .bindPopup(`<b>${n}</b><br><a href="https://www.google.com/maps/@${la},${lo},15z/data=!5m1!1e1" target="_blank">Traffic layer</a>`).addTo(map));
+let cityLayer = L.layerGroup().addTo(map);
+function drawCities(counts) {
+  cityLayer.clearLayers();
+  counts.forEach(({city, count, high}) => {
+    const xy = CITY_XY[city]; if (!xy) return;
+    const q = encodeURIComponent("demo " + city);
+    L.circleMarker(xy, {
+      radius: Math.min(5 + count * 1.4, 20),
+      color: high > 0 ? "#ffffff" : "#8a8a8a", weight:1.2, fillOpacity:.28,
+    }).bindPopup(
+      `<b style="text-transform:capitalize">${city}</b> — ${count}/h${high?`, ${high} critical`:""}<br>` +
+      `<a href="https://www.youtube.com/results?search_query=${q.replace(/%20/g,"+")}&sp=EgJAAQ%3D%3D" target="_blank">YT live</a> · ` +
+      `<a href="https://www.tiktok.com/search/live?q=${q}" target="_blank">TikTok</a> · ` +
+      `<a href="https://x.com/search?q=${q}&f=live" target="_blank">X</a>`
+    ).addTo(cityLayer);
+  });
+}
+function renderCities(counts) {
+  const max = Math.max(1, ...counts.map(c => c.count));
+  $("cities").innerHTML = counts.length ? counts
+    .sort((a,b) => b.count - a.count).map(c =>
+    `<div class="crow"><span class="nm">${c.city}</span>
+       <span class="bar"><i class="${c.high?"hi":""}" style="width:${Math.round(c.count/max*100)}%"></i></span>
+       <span class="n">${c.count}${c.high?" ⚠":""}</span></div>`).join("")
+    : `<div class="crow empty">No city-tagged reports in the last hour.</div>`;
+}
+$("wazebtn").onclick = () => { $("wazewrap").classList.toggle("on"); };
+
+let filter = "all", lastFetch = 0, seenIds = new Set(), firstLoad = true;
+document.querySelectorAll("#filters button").forEach(b => b.onclick = () => {
+  filter = b.dataset.f;
+  document.querySelectorAll("#filters button").forEach(x => x.classList.toggle("on", x === b));
+  renderTimeline(window._events || []);
+});
+
+const rel = ts => {
+  const d = Math.max(0, Date.now()/1000 - ts);
+  if (d < 3600) return Math.floor(d/60) + "m";
+  if (d < 86400) return Math.floor(d/3600) + "h";
+  return Math.floor(d/86400) + "d";
+};
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const clean = s => (s||"").replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}️‍]/gu, "").replace(/\s{2,}/g, " ").trim();
+
+function renderStreams(streams) {
+  $("nstreams").textContent = String(streams.length).padStart(2,"0");
+  $("streams").innerHTML = streams.length ? streams.map(s => {
+    const isNew = (Date.now()/1000 - s.firstSeen) < 900;
+    if (s.src === "tiktok") {
+      const handle = s.videoId;  // "@name"
+      return `<a class="stream tt" href="https://www.tiktok.com/${handle}/live" target="_blank" rel="noopener">
+        <div class="thumb tt"><span class="ttmark">TikTok</span><span class="lv"><i></i>LIVE</span></div>
+        <div><div class="title">${esc(handle)}</div>
+          <div class="meta"><span class="plat">TikTok</span>${isNew?'<span class="new">New</span>':""}
+            <span class="ch">opens in app ↗</span></div></div></a>`;
+    }
+    return `<div class="stream" data-v="${s.videoId}">
+      <div class="thumb"><img loading="lazy" src="https://i.ytimg.com/vi/${s.videoId}/mqdefault.jpg" alt="">
+        <span class="lv"><i></i>LIVE</span></div>
+      <div><div class="title">${esc(clean(s.title))}</div>
+        <div class="meta">${isNew?'<span class="new">New</span>':""}
+          ${s.viewers?`<span class="v">${s.viewers.toLocaleString("en-US")} watching</span>`:""}
+          ${s.channel?`<span class="ch">${esc(s.channel)}</span>`:""}</div></div></div>`;
+  }).join("") : `<div class="empty-msg">No streams detected. Scanning continuously.</div>`;
+  document.querySelectorAll(".stream[data-v]").forEach(el => el.onclick = () => {
+    if (wallOn) {  // wall open → give this stream audio focus instead of the single player
+      setFocus(el.dataset.v);
+      $("wall").scrollIntoView({behavior:"smooth", block:"start"});
+      return;
+    }
+    $("player").innerHTML = `<iframe src="https://www.youtube.com/embed/${el.dataset.v}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+    $("player").classList.add("on");
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+}
+
+function evMatches(e) {
+  if (filter === "all") return true;
+  if (filter === "high") return e.sev === "high";
+  if (filter === "news") return e.source === "news" || !["connectivity"].includes(e.source);
+  return e.source === filter;
+}
+function renderTimeline(events) {
+  const merged = [...events].sort((a, b) => b.ts - a.ts).slice(0, 300);
+  const shown = merged.filter(evMatches);
+  $("nevents").textContent = String(shown.length).padStart(2,"0");
+  $("timeline").innerHTML = shown.length ? shown.map(e => {
+    const t = new Date(e.ts * 1000).toLocaleTimeString("id-ID", {hour:"2-digit", minute:"2-digit", timeZone:"Asia/Jakarta"});
+    const fresh = !firstLoad && !seenIds.has(e.id) ? " fresh" : "";
+    const src = e.publisher && e.publisher !== e.source ? e.publisher : e.source;
+    return `<div class="ev sev-${e.sev||"info"}${fresh}">
+      <span class="tk"></span><time>${t}</time>
+      <div><div class="title"><a href="${e.url}" target="_blank" rel="noopener">${esc(e.title)}</a></div>
+        <div class="meta">
+          <span class="tag ${e.sev==="high"?"hi":""}">${e.source==="connectivity"?"Connectivity":e.sev==="high"?"Critical":"Press"}</span>
+          <span class="src">${esc(src)}</span>
+          ${e.city ? `<span class="city">${e.city}</span>` : ""}
+          <span>${rel(e.ts)} ago</span>
+        </div></div></div>`;
+  }).join("") : `<div class="empty-msg">No items for this filter.</div>`;
+  merged.forEach(e => seenIds.add(e.id));
+}
+
+const PLATFORM = {"x.com":"X", tiktok:"TikTok", youtube:"YouTube", bluesky:"Bluesky", telegram:"Telegram"};
+const P_ORDER = ["x.com","tiktok","youtube","bluesky","telegram"];
+function renderPills(verdicts) {
+  $("pills").innerHTML = P_ORDER.filter(t => verdicts[t]).map(t => {
+    const v = verdicts[t];
+    const mark = v==="ok"?"reachable":v==="blocked"?"BLOCKED":v==="down"?"down":"—";
+    return `<span class="pill ${v}"><span class="d"></span>${PLATFORM[t]} · ${mark}</span>`;
+  }).join("");
+  const blocked = Object.entries(verdicts).filter(([, v]) => v === "blocked").map(([t]) => PLATFORM[t]||t);
+  $("alertbar").classList.toggle("on", blocked.length > 0);
+  if (blocked.length) $("alertbar").innerHTML =
+    `<b>Access restricted</b> from Indonesian residential network: ${blocked.join(", ")} — prepare VPN. Singapore control path remains nominal.`;
+}
+function renderBrief(brief, now) {
+  const el = $("brief");
+  if (!brief || !brief.items || !brief.items.length) { el.className = "empty"; el.innerHTML = ""; return; }
+  el.className = "";
+  const age = brief.ts ? Math.max(0, Math.floor((now - brief.ts) / 60)) : null;
+  el.innerHTML = `<div class="bh"><span class="ai">AI</span><h3>Situation Brief</h3>` +
+    (age !== null ? `<span class="upd">updated ${age}m ago</span>` : "") + `</div>` +
+    brief.items.map(i => {
+      const place = i.place ? `<span class="pl">${esc(i.place)}</span> ` : "";
+      const cite = (i.urls && i.urls.length)
+        ? ` <a class="cite" href="${i.urls[0]}" target="_blank" rel="noopener">source ↗</a>` : "";
+      return `<div class="bi"><time>${esc(i.time || "")}</time><div class="x">${place}${esc(i.text || "")}${cite}</div></div>`;
+    }).join("");
+}
+
+function fmtPrice(v) { return v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(2); }
+function renderMarkets(m, now) {
+  const el = $("markets");
+  if (!m || !m.items || !m.items.length) { el.className = "markets empty"; el.innerHTML = ""; return; }
+  el.className = "markets";
+  const age = m.ts ? Math.max(0, Math.floor((now - m.ts) / 60)) : null;
+  el.innerHTML = m.items.map(x =>
+    `<span class="m"><span class="l">${esc(x.label)}</span><span class="p">${fmtPrice(x.price)}</span>` +
+    `<span class="c ${x.up ? "up" : "dn"}">${x.chg >= 0 ? "▲" : "▼"} ${Math.abs(x.chg).toFixed(2)}%</span></span>`).join("") +
+    (age !== null ? `<span class="mupd">mkt ${age}m</span>` : "");
+}
+
+function renderHealth(sources, now) {
+  const order = ["yt-search","yt-channels","tiktok","gnews","media-rss","probes","brief","markets"];
+  const byName = Object.fromEntries(sources.map(s => [s.source, s]));
+  $("health").innerHTML = order.filter(n => byName[n]).map(n => {
+    const s = byName[n]; const ok = s.lastOk && (now - s.lastOk) < 900 && !s.lastErr;
+    return `<span class="s" title="${esc(s.lastErr||"nominal")}"><span class="led ${ok?"ok":"err"}"></span>${n}${s.items?` <span class="n">${s.items}</span>`:""}</span>`;
+  }).join("");
+}
+
+async function refresh() {
+  try {
+    const d = await (await fetch("/api/summary")).json();
+    window._events = d.events; window._streams = d.streams;
+    renderStreams(d.streams); renderTimeline(d.events); renderPills(d.verdicts);
+    renderBrief(d.brief, d.now); renderMarkets(d.markets, d.now);
+    renderHealth(d.sources, d.now); drawCities(d.cityCounts); renderCities(d.cityCounts);
+    if (wallOn) syncWall();
+    // wall auto-opens on desktop only; on mobile it loads when its tab is tapped (9 videos is heavy)
+    if (!wallAutoOpened && window.innerWidth > 1180) { wallAutoOpened = true; openWall(); }
+    lastFetch = Date.now(); firstLoad = false;
+  } catch (e) { /* keep last good render */ }
+}
+
+// ---- video wall: all live YouTube streams at once, one audio focus ----
+let wallOn = false, players = {}, focusVid = null, muteAll = false, wallAutoOpened = false;
+const WALL_CAP = 9;
+function ytLives() { return (window._streams || []).filter(s => s.src !== "tiktok").slice(0, WALL_CAP); }
+function loadYT(cb) {
+  if (window.YT && window.YT.Player) return cb();
+  window.onYouTubeIframeAPIReady = cb;
+  if (!document.getElementById("ytapi")) {
+    const s = document.createElement("script");
+    s.id = "ytapi"; s.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(s);
+  }
+}
+function openWall() { wallOn = true; $("wall").classList.add("on"); $("wallToggle").classList.add("on"); loadYT(syncWall); }
+function closeWall() {
+  wallOn = false; $("wall").classList.remove("on"); $("wallToggle").classList.remove("on");
+  Object.values(players).forEach(p => { try { p.destroy(); } catch (e) {} });
+  players = {}; focusVid = null; $("wallGrid").innerHTML = "";
+}
+function syncWall() {
+  if (!wallOn || !(window.YT && window.YT.Player)) return;
+  const lives = ytLives(), want = new Set(lives.map(s => s.videoId));
+  Object.keys(players).forEach(vid => {          // drop ended
+    if (!want.has(vid)) {
+      try { players[vid].destroy(); } catch (e) {}
+      delete players[vid];
+      const el = document.getElementById("tile_" + vid); if (el) el.remove();
+    }
+  });
+  lives.forEach(s => {                            // add new, keep existing (no reload)
+    const vid = s.videoId; if (players[vid]) return;
+    const tile = document.createElement("div");
+    tile.className = "tile"; tile.id = "tile_" + vid;
+    const mount = document.createElement("div"); mount.className = "ytmount"; mount.id = "yt_" + vid;
+    tile.appendChild(mount);
+    const tap = document.createElement("div"); tap.className = "tap";
+    tap.onclick = () => setFocus(vid);       // user gesture → unmute is permitted
+    tile.appendChild(tap);
+    const cap = document.createElement("div"); cap.className = "cap";
+    cap.innerHTML = `<span class="ch">${esc(s.channel || clean(s.title).slice(0, 44))}</span><span class="aud">muted</span>`;
+    tile.appendChild(cap);
+    $("wallGrid").appendChild(tile);
+    players[vid] = new YT.Player(mount, {
+      videoId: vid,
+      playerVars: { autoplay: 1, mute: 1, playsinline: 1, controls: 1, rel: 0, modestbranding: 1 },
+      events: { onReady: e => { e.target.mute(); e.target.playVideo(); applyAudio(); } },
+    });
+  });
+  if (!focusVid || !want.has(focusVid)) focusVid = lives.length ? lives[0].videoId : null;
+  applyAudio();
+  $("wallCount").textContent = lives.length + " live";
+}
+function setFocus(vid) { focusVid = vid; applyAudio(); }
+function applyAudio() {
+  Object.entries(players).forEach(([vid, p]) => {
+    const focused = vid === focusVid, tile = document.getElementById("tile_" + vid);
+    if (tile) tile.classList.toggle("focus", focused);
+    try { if (focused && !muteAll) { p.unMute(); p.setVolume(100); } else { p.mute(); } } catch (e) {}
+    if (tile) { const a = tile.querySelector(".aud"); if (a) { const on = focused && !muteAll; a.textContent = on ? "audio" : "muted"; a.classList.toggle("on", on); } }
+  });
+}
+$("wallToggle").onclick = () => wallOn ? closeWall() : openWall();
+$("wallClose").onclick = closeWall;
+$("muteAll").onclick = () => {
+  muteAll = !muteAll;
+  $("muteAll").classList.toggle("on", muteAll);
+  $("muteAll").textContent = muteAll ? "Unmute" : "Mute all";
+  applyAudio();
+};
+$("tRefresh").onclick = () => {
+  const b = $("tRefresh"); b.classList.remove("spin"); void b.offsetWidth; b.classList.add("spin");
+  refresh();
+};
+
+// mobile tabs — one panel at a time
+function setTab(name) {
+  document.body.dataset.tab = name;
+  document.querySelectorAll("#tabbar button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  if (name === "wall" && !wallOn) openWall();
+  if (name === "map") setTimeout(() => map.invalidateSize(), 60);  // Leaflet re-measures when un-hidden
+}
+document.querySelectorAll("#tabbar button").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+document.body.dataset.tab = "timeline";
+$("upd").onclick = refresh; $("upd").style.cursor = "pointer"; $("upd").title = "Refresh now";
+
+setInterval(() => {
+  $("clock").textContent = new Date().toLocaleTimeString("en-GB", {hour12:false, timeZone:"Asia/Jakarta"}) + " WIB";
+  if (lastFetch) {
+    const ago = Math.floor((Date.now() - lastFetch) / 1000);
+    $("upd").textContent = `sync ${ago}s`;
+    $("upd").classList.toggle("stale", ago > 90);
+  }
+}, 1000);
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

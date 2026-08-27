@@ -1,0 +1,18 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# runtime data (SQLite, caches)
+data/
+*.db
+
+# skill tooling / local agent files
+.agents/
+
+# python
+__pycache__/
+*.pyc
+
+# os / editor
+.DS_Store

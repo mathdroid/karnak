@@ -1,0 +1,28 @@
+services:
+  pantau:
+    build: ./app
+    container_name: pantau
+    restart: unless-stopped
+    # Reads keys from .env (copy .env.example -> .env). Never commit .env.
+    env_file: .env
+    volumes:
+      - ./data:/data          # SQLite lives here; safe to delete to reset
+    ports:
+      - "8000:8000"           # open http://localhost:8000 — remove if you front it with a proxy
+    # If you run a residential SOCKS proxy on the host for TikTok/markets (see README),
+    # expose it to the container as `hostrelay`:
+    # extra_hosts:
+    #   - "hostrelay:host-gateway"
+
+    # --- Optional: Traefik reverse proxy (uncomment + set DOMAIN in .env) ---
+    # networks: [traefik-public]
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.pantau.rule=Host(`${DOMAIN}`)"
+    #   - "traefik.http.routers.pantau.entrypoints=websecure"
+    #   - "traefik.http.routers.pantau.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.pantau.loadbalancer.server.port=8000"
+
+# networks:
+#   traefik-public:
+#     external: true
