@@ -557,13 +557,14 @@ function renderPills(verdicts) {
   if (blocked.length) $("alertbar").innerHTML =
     `<b>${blocked.join(", ")}</b> cannot be reached from the Indonesian connection. The direct connection reaches ${blocked.length > 1 ? "them" : "it"}, which indicates a local block. Prepare a VPN.`;
 }
-function renderBrief(brief, now) {
+function renderBrief(brief, now, paused) {
   const el = $("brief");
   if (!brief || !brief.items || !brief.items.length) { el.className = "empty"; el.innerHTML = ""; return; }
   el.className = "";
   const age = brief.ts ? Math.max(0, Math.floor((now - brief.ts) / 60)) : null;
+  const upd = paused ? "updates paused" : (age !== null ? `updated ${age}m ago` : "");
   el.innerHTML = `<div class="bh"><span class="ai">AI</span><h3>Situation Brief</h3>` +
-    (age !== null ? `<span class="upd">updated ${age}m ago</span>` : "") + `</div>` +
+    (upd ? `<span class="upd">${upd}</span>` : "") + `</div>` +
     brief.items.map(i => {
       const place = i.place ? `<span class="pl">${esc(i.place)}</span> ` : "";
       const cite = (i.urls && i.urls.length)
@@ -598,7 +599,7 @@ async function refresh() {
     const d = await (await fetch("/api/summary")).json();
     window._events = d.events; window._streams = d.streams; window._verdicts = d.verdicts;
     renderStreams(d.streams); renderTimeline(d.events); renderPills(d.verdicts);
-    renderBrief(d.brief, d.now); renderMarkets(d.markets, d.now); renderReach();
+    renderBrief(d.brief, d.now, d.briefPaused); renderMarkets(d.markets, d.now); renderReach();
     renderHealth(d.sources, d.now); drawCities(d.cityCounts); renderCities(d.cityCounts);
     if (wallOn) syncWall();
     // wall auto-opens on desktop only; on mobile it loads when its tab is tapped (9 videos is heavy)

@@ -56,6 +56,9 @@ Every key is optional.
 | TikTok LIVE detection | `SIGN_API_KEY` | <https://www.eulerstream.com> (TikTokLive signing). |
 | TikTok and markets egress | `PROXY` | Any residential SOCKS5 proxy that you control. |
 
+Set `BRIEF_PAUSED=1` to pause brief generation and its LLM cost during a quiet period.
+The page keeps the last brief and reports that updates are paused.
+
 ## Proxy requirement
 
 TikTok and Yahoo Finance block requests from datacenter IP addresses. The TikTok
