@@ -223,12 +223,20 @@
   .whead .wctl { margin-left:auto; display:flex; gap:7px; }
   .whead button.chip { cursor:pointer; background:none; font-family:var(--sans); }
   .whead button.chip.on { border-color:var(--accent); color:var(--ink); }
-  /* stage: the focused player sits fixed and centered; the other live tiles form a
-     strip beneath it that slowly drifts sideways (paused while the viewer interacts) */
-  #wallStage { position:relative; max-width:1760px; margin:0 auto; padding-top:calc(52vh + 6px); }
-  #wallGrid { display:flex; gap:1px; padding:1px; background:var(--hair); overflow-x:auto; scrollbar-width:none; }
+  /* stage: one big focused player on the left; the other live tiles fill two rows on
+     its right that slowly drift sideways, offset like brickwork (drift pauses while
+     the viewer interacts). --tw is the strip tile width; the focus slot is two rows
+     tall with a 16:9 width, and the focused tile is absolutely positioned into it so
+     changing focus never moves an iframe in the DOM (that would reload the player). */
+  .wall { --tw:300px; --th:calc(var(--tw) * 9 / 16); --fh:calc(var(--th) * 2 + 1px); }
+  #wallStage { position:relative; max-width:1760px; margin:0 auto;
+       padding-left:calc(var(--fh) * 16 / 9 + 3px); }
+  #wallGrid { display:flex; flex-direction:column; gap:1px; padding:1px; background:var(--hair);
+       overflow-x:auto; scrollbar-width:none; }
   #wallGrid::-webkit-scrollbar { display:none; }
-  #wallGrid .tile { flex:0 0 300px; }
+  .wrow { display:flex; gap:1px; width:max-content; }
+  #wrowB { margin-left:calc(var(--tw) / 2); }    /* brick interlace: half-tile offset */
+  .wrow .tile { flex:0 0 var(--tw); }
   .tile { position:relative; aspect-ratio:16/9; background:#000; overflow:hidden; cursor:pointer; }
   .tile > .ytmount, .tile iframe { width:100%; height:100%; border:0; display:block; }
   /* Click-catcher: the iframe swallows clicks, so this transparent layer captures them
@@ -239,8 +247,8 @@
        letter-spacing:.1em; text-transform:uppercase; color:#fff; background:rgba(0,0,0,.55);
        padding:2px 6px; opacity:0; transition:opacity .15s; }
   .tile:not(.focus) .tap:hover::after { opacity:1; }
-  .tile.focus { position:absolute; top:1px; left:50%; transform:translateX(-50%); height:52vh;
-       width:auto; max-width:calc(100% - 2px); aspect-ratio:16/9; outline:2px solid var(--accent);
+  .tile.focus { position:absolute; top:1px; left:1px; height:var(--fh); width:auto;
+       max-width:calc(100% - 2px); aspect-ratio:16/9; outline:2px solid var(--accent);
        outline-offset:-2px; z-index:2; }
   .tile .cap { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between;
        align-items:center; gap:8px; padding:5px 8px; background:linear-gradient(transparent,rgba(0,0,0,.82));
@@ -324,9 +332,10 @@
          background:none; border:0; border-left:1px solid var(--hair); color:var(--faint); padding:13px 0; cursor:pointer; }
     #tabbar button:first-child { border-left:0; }
     #tabbar button.on { color:var(--ink); }
-    #wallStage { padding-top:calc(30vh + 6px); }
-    .tile.focus { height:30vh; }
-    #wallGrid .tile { flex:0 0 62vw; }
+    .wall { --tw:44vw; }
+    #wallStage { padding-left:0; padding-top:calc(30vh + 6px); }
+    .tile.focus { left:50%; transform:translateX(-50%); height:30vh; }
+    #wrowB { margin-left:22vw; }
     .markets { gap:18px; }
   }
   ::-webkit-scrollbar { width:9px; height:9px; }
@@ -357,7 +366,7 @@
       <button class="chip" id="wallClose">Close</button>
     </div>
   </div>
-  <div id="wallStage"><div id="wallGrid"></div></div>
+  <div id="wallStage"><div id="wallGrid"><div class="wrow" id="wrowA"></div><div class="wrow" id="wrowB"></div></div></div>
 </section>
 
 <main>
@@ -722,7 +731,7 @@ $("wall").ondrop = e => {
 function closeWall() {
   wallOn = false; $("wall").classList.remove("on"); $("wallToggle").classList.remove("on");
   Object.values(players).forEach(p => { try { p.destroy(); } catch (e) {} });
-  players = {}; focusVid = null; $("wallGrid").innerHTML = "";
+  players = {}; focusVid = null; $("wrowA").innerHTML = ""; $("wrowB").innerHTML = "";
 }
 function syncWall() {
   if (!wallOn || !(window.YT && window.YT.Player)) return;
@@ -746,7 +755,7 @@ function syncWall() {
     const cap = document.createElement("div"); cap.className = "cap";
     cap.innerHTML = `<span class="ch">${esc(s.channel || clean(s.title).slice(0, 44))}</span><span class="aud">muted</span>`;
     tile.appendChild(cap);
-    $("wallGrid").appendChild(tile);
+    ($("wrowA").children.length <= $("wrowB").children.length ? $("wrowA") : $("wrowB")).appendChild(tile);
     players[vid] = new YT.Player(mount, {
       videoId: vid,
       playerVars: { autoplay: 1, mute: 1, playsinline: 1, controls: 1, rel: 0, modestbranding: 1 },
