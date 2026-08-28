@@ -103,6 +103,15 @@ The server provides six tools: `situation_brief`, `live_streams`, `news_timeline
 city or by critical severity. The server is a wrapper over `/api/summary` with a
 15-second cache, so it exposes only the data that the public site already exposes.
 
+## Chat
+
+The dashboard can render a Chat tab. Set `CHAT_ENABLED=1` and route `/chat/*` on the
+same origin to a backend with two endpoints: `GET /chat/stream` (server-sent events:
+one `history` event with a JSON array, then one `msg` event per message) and
+`POST /chat/post` (JSON body `{"user": "...", "text": "..."}`). The reference
+deployment routes these to an SSH chat hub that also bridges a Discord channel, so
+web, SSH, and Discord share one room.
+
 ## Architecture
 
 One FastAPI service runs all collectors. Each collector is an async task that polls its

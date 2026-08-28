@@ -276,6 +276,22 @@
        text-transform:uppercase; letter-spacing:.08em; font-size:11px; padding:6px 13px; border-radius:3px; cursor:pointer; }
   .reachnote { padding:2px 18px 16px; color:var(--faint); font-size:11px; line-height:1.5; }
 
+  /* ---- chat ---- */
+  .hide { display:none !important; }
+  #chatLog { overflow-y:auto; max-height:38vh; padding:2px 18px 4px; display:flex; flex-direction:column; gap:3px; }
+  .cmsg { font-size:12.5px; line-height:1.45; overflow-wrap:anywhere; }
+  .cmsg time { font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-right:6px; }
+  .cmsg .srct { font-family:var(--mono); font-size:9.5px; color:var(--faint); text-transform:uppercase; margin-right:6px; }
+  .cmsg .who { font-weight:600; color:var(--ink); margin-right:6px; }
+  #chatForm { display:flex; gap:6px; padding:10px 18px; border-top:1px solid var(--hair); }
+  #chatForm input { flex:1; min-width:0; background:var(--inset); border:1px solid var(--hair); color:var(--ink);
+       font-family:var(--sans); font-size:12.5px; padding:6px 9px; border-radius:3px; }
+  #chatForm input:focus { outline:none; border-color:var(--hair-2); }
+  #chatNick { flex:0 0 92px; }
+  #chatForm button { background:var(--surface); border:1px solid var(--hair-2); color:var(--ink); font-family:var(--cond);
+       text-transform:uppercase; letter-spacing:.08em; font-size:11px; padding:6px 13px; border-radius:3px; cursor:pointer; }
+  .chatnote { padding:2px 18px 16px; color:var(--faint); font-size:11px; line-height:1.5; }
+
   /* ---- mobile tab bar (hidden on desktop) ---- */
   #tabbar { display:none; }
 
@@ -283,6 +299,7 @@
     main { grid-template-columns:1fr; }
     .col3 { display:contents; }           /* sections become direct tab targets */
     #streams, #reachTable { max-height:none; }
+    #chatLog { max-height:none; flex:1; }
     .bar { gap:10px 12px; }
     .reach { display:none; }              /* reachability now has its own tab */
     #upd { display:none; }
@@ -294,14 +311,15 @@
     body[data-tab="feeds"]    section[data-tab="feeds"],
     body[data-tab="timeline"] section[data-tab="timeline"],
     body[data-tab="map"]      section[data-tab="map"],
-    body[data-tab="reach"]    section[data-tab="reach"] { display:flex; }
+    body[data-tab="reach"]    section[data-tab="reach"],
+    body[data-tab="chat"]     section[data-tab="chat"] { display:flex; }
     #wall { display:none; }
     body[data-tab="wall"] #wall { display:block; }
     body[data-tab="wall"] main { display:none; }
     #wallClose { display:none; }         /* the tab bar handles leaving the wall */
     #health { display:none; }            /* LED diagnostics are desktop-only; keep footer links */
 
-    #tabbar { display:grid; grid-template-columns:repeat(5,1fr); position:fixed; bottom:0; left:0; right:0;
+    #tabbar { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; position:fixed; bottom:0; left:0; right:0;
          z-index:1200; background:rgba(13,13,13,.96); backdrop-filter:blur(12px); border-top:1px solid var(--hair); }
     #tabbar button { font-family:var(--cond); text-transform:uppercase; letter-spacing:.08em; font-size:11px;
          background:none; border:0; border-left:1px solid var(--hair); color:var(--faint); padding:13px 0; cursor:pointer; }
@@ -402,6 +420,17 @@
       Your browser checks each site from your own connection. You can add any host.
       Your list is stored only in this browser.</p>
   </section>
+
+  <section data-tab="chat" id="chatSec" class="hide">
+    <div class="head"><h2>Chat</h2></div>
+    <div id="chatLog"></div>
+    <form id="chatForm">
+      <input id="chatNick" placeholder="nickname" autocomplete="off" spellcheck="false" maxlength="10">
+      <input id="chatText" placeholder="message" autocomplete="off" maxlength="500">
+      <button type="submit">Send</button>
+    </form>
+    <p class="chatnote" id="chatNote"></p>
+  </section>
   </div>
 </main>
 
@@ -410,6 +439,7 @@
   <button data-tab="feeds">Feeds</button>
   <button data-tab="map">Map</button>
   <button data-tab="reach">Reach</button>
+  <button data-tab="chat" id="chatTab" class="hide">Chat</button>
   <button data-tab="wall">Wall</button>
 </nav>
 
@@ -601,6 +631,7 @@ async function refresh() {
     renderStreams(d.streams); renderTimeline(d.events); renderPills(d.verdicts);
     renderBrief(d.brief, d.now, d.briefPaused); renderMarkets(d.markets, d.now); renderReach();
     renderHealth(d.sources, d.now); drawCities(d.cityCounts); renderCities(d.cityCounts);
+    if (d.chatEnabled) initChat();
     if (wallOn) syncWall();
     // wall auto-opens on desktop only; on mobile it loads when its tab is tapped (9 videos is heavy)
     if (!wallAutoOpened && window.innerWidth > 1180) { wallAutoOpened = true; openWall(); }
@@ -766,6 +797,52 @@ $("reachAdd").onsubmit = e => {
 $("reachRefresh").onclick = () => { runClientChecks(); };
 renderReach(); runClientChecks();
 setInterval(runClientChecks, 60000);
+
+// ---- chat: one room shared with the SSH chat and a Discord channel ----
+let chatOn = false;
+const NICK_KEY = "pantau.chat.nick";
+const CHAT_NOTE = "This room is shared with the SSH chat (ssh mathdro.id) and a Discord channel. " +
+  "Leave the nickname blank to post as anon. The server logs your IP address.";
+function chatTag(src) { return src === "discord" ? "dc" : src === "web" ? "" : "ssh"; }
+function chatLine(m) {
+  const t = new Date(m.At).toLocaleTimeString("en-GB", {hour12:false, hour:"2-digit", minute:"2-digit", timeZone:"Asia/Jakarta"});
+  const tag = chatTag(m.Src);
+  return `<div class="cmsg"><time>${t}</time>${tag ? `<span class="srct">${tag}</span>` : ""}` +
+    `<span class="who">${esc(m.User)}</span>${esc(m.Text)}</div>`;
+}
+function appendChat(m, stick) {
+  const log = $("chatLog");
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  log.insertAdjacentHTML("beforeend", chatLine(m));
+  while (log.children.length > 200) log.firstChild.remove();
+  if (stick || atBottom) log.scrollTop = log.scrollHeight;
+}
+function initChat() {
+  if (chatOn) return;
+  chatOn = true;
+  $("chatSec").classList.remove("hide"); $("chatTab").classList.remove("hide");
+  $("chatNote").textContent = CHAT_NOTE;
+  try { $("chatNick").value = localStorage.getItem(NICK_KEY) || ""; } catch (e) {}
+  const src = new EventSource("/chat/stream");   // auto-reconnects on drops
+  src.addEventListener("history", e => {
+    $("chatLog").innerHTML = "";
+    JSON.parse(e.data || "[]").forEach(m => appendChat(m, true));
+  });
+  src.addEventListener("msg", e => appendChat(JSON.parse(e.data), false));
+}
+$("chatForm").onsubmit = async e => {
+  e.preventDefault();
+  const text = $("chatText").value.trim();
+  if (!text) return;
+  const nick = $("chatNick").value.trim();
+  try { localStorage.setItem(NICK_KEY, nick); } catch (e2) {}
+  const r = await fetch("/chat/post", {method:"POST",
+    headers: {"Content-Type": "application/json"}, body: JSON.stringify({user:nick, text})});
+  if (r.ok) { $("chatText").value = ""; return; }
+  $("chatNote").textContent = r.status === 429
+    ? "The server rate limits messages. Wait a few seconds." : "The message was not sent.";
+  setTimeout(() => { $("chatNote").textContent = CHAT_NOTE; }, 4000);
+};
 
 // mobile tabs — one panel at a time
 function setTab(name) {

@@ -68,6 +68,9 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 # Set BRIEF_PAUSED=1 to stop brief generation (and its LLM cost) without
 # removing the panel; the page keeps the last brief and reports the pause.
 BRIEF_PAUSED = os.getenv("BRIEF_PAUSED", "").lower() in ("1", "true", "yes")
+# Set CHAT_ENABLED=1 when a chat backend is routed at /chat/* on the same
+# origin (see README); the frontend renders the Chat tab only when true.
+CHAT_ENABLED = os.getenv("CHAT_ENABLED", "").lower() in ("1", "true", "yes")
 SUMMARY_MODEL = os.getenv("SUMMARY_MODEL", "z-ai/glm-5.3-flash")
 SUMMARY_FALLBACK = os.getenv("SUMMARY_FALLBACK", "z-ai/glm-5.2:free")
 BRIEF_PROMPT = (
@@ -746,6 +749,7 @@ async def summary():
         "cityCounts": [dict(zip(("city", "count", "high"), c)) for c in city_counts],
         "brief": {"items": json.loads(brief_row[0]), "ts": brief_row[1]} if brief_row else None,
         "briefPaused": BRIEF_PAUSED,
+        "chatEnabled": CHAT_ENABLED,
         "markets": {"items": json.loads(markets_row[0]), "ts": markets_row[1]} if markets_row else None,
     }
 

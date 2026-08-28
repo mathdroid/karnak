@@ -16,3 +16,6 @@ __pycache__/
 
 # os / editor
 .DS_Store
+
+# local specs / working docs
+.scratch/
