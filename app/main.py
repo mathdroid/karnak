@@ -654,6 +654,17 @@ async def collect_markets(viaproxy):
                     "up": (chg < 0) if invert else (chg > 0)})
     if out:
         async with db_lock:
+            # carry a rolling per-symbol price history for the frontend sparklines
+            # (48 points at the 120s cadence = about 96 minutes)
+            prev = db.execute("SELECT value FROM meta WHERE key='markets'").fetchone()
+            hist = {}
+            if prev:
+                try:
+                    hist = {i["label"]: i.get("hist", []) for i in json.loads(prev[0])}
+                except Exception:
+                    hist = {}
+            for i in out:
+                i["hist"] = (hist.get(i["label"], []) + [i["price"]])[-48:]
             db.execute("INSERT INTO meta VALUES('markets',?,?) ON CONFLICT(key) DO UPDATE SET "
                        "value=excluded.value, ts=excluded.ts", (json.dumps(out), int(time.time())))
             db.commit()

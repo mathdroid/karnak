@@ -61,28 +61,23 @@
   .wordmark .sub { font-family:var(--cond); font-size:12px; text-transform:uppercase; letter-spacing:.1em;
        color:var(--faint); padding-left:11px; border-left:1px solid var(--hair-2); }
   #clock { font-family:var(--mono); font-size:13px; color:var(--dim); letter-spacing:.02em; }
-  .reach { display:flex; align-items:center; gap:12px; margin-left:auto; flex-wrap:wrap; }
-  .reach .label { margin-right:-4px; }
-  #pills { display:flex; gap:14px; }
-  .pill { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); }
-  .pill .d { width:5px; height:5px; border-radius:50%; background:var(--faint); flex-shrink:0; }
-  .pill.ok .d { background:var(--ok); }
-  .pill.blocked { color:var(--crit); font-weight:600; }
-  .pill.blocked .d { background:var(--crit); }
-  .pill.down .d, .pill.vantage-down .d { background:var(--warn); }
-  #upd { font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+  #upd { margin-left:auto; font-family:var(--mono); font-size:11.5px; color:var(--faint); }
   #upd.stale { color:var(--warn); }
 
-  .markets { display:flex; gap:24px; align-items:center; padding:7px 20px; border-bottom:1px solid var(--hair);
-       background:var(--bg); overflow-x:auto; }
+  .markets { display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--hair);
+       background:var(--bg); }
   .markets.empty { display:none; }
-  .markets .m { display:flex; align-items:baseline; gap:7px; white-space:nowrap; }
+  #mtape { flex:1; overflow:hidden; }
+  #mtapeInner { display:flex; width:max-content; padding:7px 0; will-change:transform; }
+  .mseq { display:flex; gap:24px; align-items:center; padding-right:24px; }
+  .markets .m { display:flex; align-items:center; gap:7px; white-space:nowrap; }
+  .markets .m .spark { display:block; color:var(--faint); flex-shrink:0; }
   .markets .m .l { color:var(--dim); text-transform:uppercase; letter-spacing:.08em; font-size:10.5px; font-weight:600; }
   .markets .m .p { font-family:var(--mono); font-size:12.5px; color:var(--ink); }
   .markets .m .c { font-family:var(--mono); font-size:11.5px; }
   .markets .m .c { color:var(--dim); }
   .markets .m .c.up { color:var(--ink); }
-  .markets .mupd { margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--faint); flex-shrink:0; padding-left:16px; }
+  .markets .mupd { font-family:var(--mono); font-size:10.5px; color:var(--faint); flex-shrink:0; padding-left:16px; }
 
   #alertbar { display:none; border-bottom:1px solid var(--hair-2); background:var(--surface);
               color:var(--ink); font-size:13px; padding:8px 20px; }
@@ -228,8 +223,12 @@
   .whead .wctl { margin-left:auto; display:flex; gap:7px; }
   .whead button.chip { cursor:pointer; background:none; font-family:var(--sans); }
   .whead button.chip.on { border-color:var(--accent); color:var(--ink); }
-  #wallGrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-       gap:1px; background:var(--hair); max-width:1760px; margin:0 auto; grid-auto-flow:dense; }
+  /* stage: the focused player sits fixed and centered; the other live tiles form a
+     strip beneath it that slowly drifts sideways (paused while the viewer interacts) */
+  #wallStage { position:relative; max-width:1760px; margin:0 auto; padding-top:calc(52vh + 6px); }
+  #wallGrid { display:flex; gap:1px; padding:1px; background:var(--hair); overflow-x:auto; scrollbar-width:none; }
+  #wallGrid::-webkit-scrollbar { display:none; }
+  #wallGrid .tile { flex:0 0 300px; }
   .tile { position:relative; aspect-ratio:16/9; background:#000; overflow:hidden; cursor:pointer; }
   .tile > .ytmount, .tile iframe { width:100%; height:100%; border:0; display:block; }
   /* Click-catcher: the iframe swallows clicks, so this transparent layer captures them
@@ -240,7 +239,9 @@
        letter-spacing:.1em; text-transform:uppercase; color:#fff; background:rgba(0,0,0,.55);
        padding:2px 6px; opacity:0; transition:opacity .15s; }
   .tile:not(.focus) .tap:hover::after { opacity:1; }
-  .tile.focus { grid-column:span 2; grid-row:span 2; order:-1; outline:2px solid var(--accent); outline-offset:-2px; z-index:2; }
+  .tile.focus { position:absolute; top:1px; left:50%; transform:translateX(-50%); height:52vh;
+       width:auto; max-width:calc(100% - 2px); aspect-ratio:16/9; outline:2px solid var(--accent);
+       outline-offset:-2px; z-index:2; }
   .tile .cap { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between;
        align-items:center; gap:8px; padding:5px 8px; background:linear-gradient(transparent,rgba(0,0,0,.82));
        font-size:11px; pointer-events:none; }
@@ -274,7 +275,6 @@
   #reachAdd input:first-child { flex:0 0 92px; }
   #reachAdd button { background:var(--surface); border:1px solid var(--hair-2); color:var(--ink); font-family:var(--cond);
        text-transform:uppercase; letter-spacing:.08em; font-size:11px; padding:6px 13px; border-radius:3px; cursor:pointer; }
-  .reachnote { padding:2px 18px 16px; color:var(--faint); font-size:11px; line-height:1.5; }
 
   /* ---- chat ---- */
   .hide { display:none !important; }
@@ -301,7 +301,6 @@
     #streams, #reachTable { max-height:none; }
     #chatLog { max-height:none; flex:1; }
     .bar { gap:10px 12px; }
-    .reach { display:none; }              /* reachability now has its own tab */
     #upd { display:none; }
     #clock { margin-left:auto; }
 
@@ -325,7 +324,9 @@
          background:none; border:0; border-left:1px solid var(--hair); color:var(--faint); padding:13px 0; cursor:pointer; }
     #tabbar button:first-child { border-left:0; }
     #tabbar button.on { color:var(--ink); }
-    #wallGrid { grid-template-columns:1fr; }   /* one video per row on phones */
+    #wallStage { padding-top:calc(30vh + 6px); }
+    .tile.focus { height:30vh; }
+    #wallGrid .tile { flex:0 0 62vw; }
     .markets { gap:18px; }
   }
   ::-webkit-scrollbar { width:9px; height:9px; }
@@ -342,14 +343,10 @@
     </div>
     <span id="clock" class="mono">--:--:-- WIB</span>
     <button id="wallToggle" class="wallbtn">▦ Video wall</button>
-    <div class="reach">
-      <span class="label">Reachability · ID</span>
-      <div id="pills"></div>
-      <span id="upd">connecting</span>
-    </div>
+    <span id="upd">connecting</span>
   </div>
 </header>
-<div id="markets" class="markets empty"></div>
+<div id="markets" class="markets empty"><div id="mtape"><div id="mtapeInner"></div></div><span class="mupd" id="mupd"></span></div>
 <div id="alertbar"></div>
 
 <section id="wall" class="wall">
@@ -360,7 +357,7 @@
       <button class="chip" id="wallClose">Close</button>
     </div>
   </div>
-  <div id="wallGrid"></div>
+  <div id="wallStage"><div id="wallGrid"></div></div>
 </section>
 
 <main>
@@ -416,9 +413,6 @@
       <input id="reachHost" placeholder="host, e.g. example.com" autocomplete="off" spellcheck="false">
       <button type="submit">Add</button>
     </form>
-    <p class="reachnote">The server checks each site from an Indonesian residential connection.
-      Your browser checks each site from your own connection. You can add any host.
-      Your list is stored only in this browser.</p>
   </section>
 
   <section data-tab="chat" id="chatSec" class="hide">
@@ -527,7 +521,7 @@ function renderStreams(streams) {
           <div class="meta"><span class="plat">TikTok</span>${isNew?'<span class="new">New</span>':""}
             <span class="ch">opens in app ↗</span></div></div></a>`;
     }
-    return `<div class="stream" data-v="${s.videoId}">
+    return `<div class="stream" data-v="${s.videoId}" draggable="true">
       <div class="thumb"><img loading="lazy" src="https://i.ytimg.com/vi/${s.videoId}/mqdefault.jpg" alt="">
         <span class="lv"><i></i>LIVE</span></div>
       <div><div class="title">${esc(clean(s.title))}</div>
@@ -535,7 +529,9 @@ function renderStreams(streams) {
           ${s.viewers?`<span class="v">${s.viewers.toLocaleString("en-US")} watching</span>`:""}
           ${s.channel?`<span class="ch">${esc(s.channel)}</span>`:""}</div></div></div>`;
   }).join("") : `<div class="empty-msg">No live streams are detected. The monitor continues to scan.</div>`;
-  document.querySelectorAll(".stream[data-v]").forEach(el => el.onclick = () => {
+  document.querySelectorAll(".stream[data-v]").forEach(el => {
+    el.ondragstart = e => { e.dataTransfer.setData("text/plain", el.dataset.v); e.dataTransfer.effectAllowed = "copy"; };
+    el.onclick = () => {
     if (wallOn) {  // wall open → give this stream audio focus instead of the single player
       setFocus(el.dataset.v);
       $("wall").scrollIntoView({behavior:"smooth", block:"start"});
@@ -544,6 +540,7 @@ function renderStreams(streams) {
     $("player").innerHTML = `<iframe src="https://www.youtube.com/embed/${el.dataset.v}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
     $("player").classList.add("on");
     window.scrollTo({top:0, behavior:"smooth"});
+    };
   });
 }
 
@@ -575,13 +572,7 @@ function renderTimeline(events) {
 }
 
 const PLATFORM = {"x.com":"X", tiktok:"TikTok", youtube:"YouTube", bluesky:"Bluesky", telegram:"Telegram"};
-const P_ORDER = ["x.com","tiktok","youtube","bluesky","telegram"];
-function renderPills(verdicts) {
-  $("pills").innerHTML = P_ORDER.filter(t => verdicts[t]).map(t => {
-    const v = verdicts[t];
-    const mark = v==="ok"?"reachable":v==="blocked"?"BLOCKED":v==="down"?"down":"·";
-    return `<span class="pill ${v}"><span class="d"></span>${PLATFORM[t]} · ${mark}</span>`;
-  }).join("");
+function renderAlert(verdicts) {
   const blocked = Object.entries(verdicts).filter(([, v]) => v === "blocked").map(([t]) => PLATFORM[t]||t);
   $("alertbar").classList.toggle("on", blocked.length > 0);
   if (blocked.length) $("alertbar").innerHTML =
@@ -604,15 +595,46 @@ function renderBrief(brief, now, paused) {
 }
 
 function fmtPrice(v) { return v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(2); }
+function spark(hist) {
+  if (!hist || hist.length < 2) return "";
+  const min = Math.min(...hist), max = Math.max(...hist), span = (max - min) || 1;
+  const pts = hist.map((v, i) =>
+    `${(i / (hist.length - 1) * 56).toFixed(1)},${(13 - (v - min) / span * 12).toFixed(1)}`).join(" ");
+  return `<svg class="spark" width="56" height="14" viewBox="0 0 56 14" fill="none" aria-hidden="true">` +
+    `<polyline points="${pts}" stroke="currentColor" stroke-width="1"/></svg>`;
+}
+let mtapeKey = "", mtapeW = 0, mtapeOff = 0, mtapeOn = false;
 function renderMarkets(m, now) {
   const el = $("markets");
-  if (!m || !m.items || !m.items.length) { el.className = "markets empty"; el.innerHTML = ""; return; }
+  if (!m || !m.items || !m.items.length) { el.className = "markets empty"; return; }
   el.className = "markets";
   const age = m.ts ? Math.max(0, Math.floor((now - m.ts) / 60)) : null;
-  el.innerHTML = m.items.map(x =>
-    `<span class="m"><span class="l">${esc(x.label)}</span><span class="p">${fmtPrice(x.price)}</span>` +
-    `<span class="c ${x.up ? "up" : "dn"}">${x.chg >= 0 ? "▲" : "▼"} ${Math.abs(x.chg).toFixed(2)}%</span></span>`).join("") +
-    (age !== null ? `<span class="mupd">mkt ${age}m</span>` : "");
+  $("mupd").textContent = age !== null ? `mkt ${age}m` : "";
+  const seq = m.items.map(x =>
+    `<span class="m"><span class="l">${esc(x.label)}</span>${spark(x.hist)}<span class="p">${fmtPrice(x.price)}</span>` +
+    `<span class="c ${x.up ? "up" : "dn"}">${x.chg >= 0 ? "▲" : "▼"} ${Math.abs(x.chg).toFixed(2)}%</span></span>`).join("");
+  if (seq !== mtapeKey) {  // rebuild only on data change so the tape does not stutter
+    mtapeKey = seq;
+    const inner = $("mtapeInner");
+    inner.innerHTML = `<span class="mseq">${seq}</span>`;
+    mtapeW = inner.firstChild.offsetWidth || 600;
+    inner.innerHTML = `<span class="mseq">${seq}</span>`.repeat(Math.max(2, Math.ceil(2400 / mtapeW) + 1));
+  }
+  startTape();
+}
+function startTape() {
+  if (mtapeOn) return;
+  mtapeOn = true;
+  let last = performance.now();
+  const step = t => {
+    const dt = Math.min(100, t - last); last = t;
+    if (mtapeW > 0 && !document.hidden && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      mtapeOff = (mtapeOff + dt * 0.02) % mtapeW;   // 20px per second
+      $("mtapeInner").style.transform = `translateX(${-mtapeOff}px)`;
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 function renderHealth(sources, now) {
@@ -628,7 +650,7 @@ async function refresh() {
   try {
     const d = await (await fetch("/api/summary")).json();
     window._events = d.events; window._streams = d.streams; window._verdicts = d.verdicts;
-    renderStreams(d.streams); renderTimeline(d.events); renderPills(d.verdicts);
+    renderStreams(d.streams); renderTimeline(d.events); renderAlert(d.verdicts);
     renderBrief(d.brief, d.now, d.briefPaused); renderMarkets(d.markets, d.now); renderReach();
     renderHealth(d.sources, d.now); drawCities(d.cityCounts); renderCities(d.cityCounts);
     if (d.chatEnabled) initChat();
@@ -644,7 +666,14 @@ async function refresh() {
 // and pause that player, so the default-focused (top-viewers) tile would freeze.
 let wallOn = false, players = {}, focusVid = null, muteAll = false, wallAutoOpened = false, audioOn = false;
 const WALL_CAP = 9;
-function ytLives() { return (window._streams || []).filter(s => s.src !== "tiktok").slice(0, WALL_CAP); }
+const pinned = new Set();   // videoIds dragged in from the Live Feeds list
+function ytLives() {
+  const yt = (window._streams || []).filter(s => s.src !== "tiktok");
+  pinned.forEach(id => { if (!yt.some(s => s.videoId === id)) pinned.delete(id); });  // ended
+  const pin = yt.filter(s => pinned.has(s.videoId));
+  const rest = yt.filter(s => !pinned.has(s.videoId));
+  return [...pin, ...rest].slice(0, Math.max(WALL_CAP, pin.length));
+}
 function loadYT(cb) {
   if (window.YT && window.YT.Player) return cb();
   window.onYouTubeIframeAPIReady = cb;
@@ -654,7 +683,42 @@ function loadYT(cb) {
     document.head.appendChild(s);
   }
 }
-function openWall() { wallOn = true; $("wall").classList.add("on"); $("wallToggle").classList.add("on"); loadYT(syncWall); }
+function openWall() { wallOn = true; $("wall").classList.add("on"); $("wallToggle").classList.add("on"); loadYT(syncWall); startWallDrift(); }
+let wallDriftOn = false, wallDriftDir = 1, wallDriftHold = 0, wallScrollF = 0;
+function startWallDrift() {
+  if (wallDriftOn) return;
+  wallDriftOn = true;
+  const g = $("wallGrid");
+  // manual interaction pauses the drift and re-anchors the float accumulator
+  ["pointerdown", "wheel", "touchstart"].forEach(ev =>
+    g.addEventListener(ev, () => { wallDriftHold = Date.now() + 5000; wallScrollF = g.scrollLeft; }, {passive: true}));
+  let last = performance.now();
+  const step = t => {
+    const dt = Math.min(100, t - last); last = t;
+    if (wallOn && !document.hidden && Date.now() > wallDriftHold &&
+        !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const maxScroll = g.scrollWidth - g.clientWidth;
+      if (maxScroll > 4) {
+        wallScrollF = Math.min(maxScroll, Math.max(0, wallScrollF + wallDriftDir * dt * 0.015));  // 15px/s
+        g.scrollLeft = wallScrollF;
+        if (wallScrollF >= maxScroll - 1) wallDriftDir = -1;
+        else if (wallScrollF <= 1) wallDriftDir = 1;
+      }
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+// drag a stream card from Live Feeds onto the wall to pin it (and focus it)
+$("wall").ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; };
+$("wall").ondrop = e => {
+  e.preventDefault();
+  const id = e.dataTransfer.getData("text/plain");
+  if (!id || !(window._streams || []).some(s => s.videoId === id && s.src !== "tiktok")) return;
+  pinned.add(id);
+  syncWall();
+  setFocus(id);
+};
 function closeWall() {
   wallOn = false; $("wall").classList.remove("on"); $("wallToggle").classList.remove("on");
   Object.values(players).forEach(p => { try { p.destroy(); } catch (e) {} });
@@ -801,8 +865,6 @@ setInterval(runClientChecks, 60000);
 // ---- chat: one room shared with the SSH chat and a Discord channel ----
 let chatOn = false;
 const NICK_KEY = "pantau.chat.nick";
-const CHAT_NOTE = "This room is shared with the SSH chat (ssh mathdro.id) and a Discord channel. " +
-  "Leave the nickname blank to post as anon. The server logs your IP address.";
 function chatTag(src) { return src === "discord" ? "dc" : src === "web" ? "" : "ssh"; }
 function chatLine(m) {
   const t = new Date(m.At).toLocaleTimeString("en-GB", {hour12:false, hour:"2-digit", minute:"2-digit", timeZone:"Asia/Jakarta"});
@@ -821,7 +883,6 @@ function initChat() {
   if (chatOn) return;
   chatOn = true;
   $("chatSec").classList.remove("hide"); $("chatTab").classList.remove("hide");
-  $("chatNote").textContent = CHAT_NOTE;
   try { $("chatNick").value = localStorage.getItem(NICK_KEY) || ""; } catch (e) {}
   const src = new EventSource("/chat/stream");   // auto-reconnects on drops
   src.addEventListener("history", e => {
@@ -839,9 +900,8 @@ $("chatForm").onsubmit = async e => {
   const r = await fetch("/chat/post", {method:"POST",
     headers: {"Content-Type": "application/json"}, body: JSON.stringify({user:nick, text})});
   if (r.ok) { $("chatText").value = ""; return; }
-  $("chatNote").textContent = r.status === 429
-    ? "The server rate limits messages. Wait a few seconds." : "The message was not sent.";
-  setTimeout(() => { $("chatNote").textContent = CHAT_NOTE; }, 4000);
+  $("chatNote").textContent = r.status === 429 ? "rate limited" : "not sent";
+  setTimeout(() => { $("chatNote").textContent = ""; }, 3000);
 };
 
 // mobile tabs — one panel at a time
